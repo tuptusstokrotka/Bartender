@@ -36,13 +36,14 @@ uint8_t MyEncoder::Update(uint8_t *volume){
     if (millis() - last_Tick > DEBOUNCE) {
         /* GET ENCODER READINGS */
         int32_t current_position = read();
-        int32_t increment = (current_position - last_Position) / RESOLUTION;
+        int32_t increment = (current_position - last_Position);
+
+        /* CHANGE NOT TRIGGERED */
+        if(increment < RESOLUTION)
+            return *volume;
 
         /* CALCULATE HOW MUCH TO INCREMENT VOLUME IN RANGE [0, 100] */
-        int32_t new_volume = constrain(*volume + increment, 0, 100);
-
-        /* ADD DIFFERENCE TO THE VOLUME */
-        *volume = (uint8_t)new_volume;
+        *volume = (uint8_t)constrain(*volume + 1, 0, 100);
 
         /* UPDATE LAST VALUES */
         last_Position = current_position;

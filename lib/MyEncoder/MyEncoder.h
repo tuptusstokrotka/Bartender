@@ -4,6 +4,11 @@
 
 #include <Encoder.h>
 
+// pin setup
+#define PIN_CLK     2
+#define PIN_DT      3
+#define PIN_SW      A1
+
 // Encoder naciśnij / przytrzymaj definicje
 #define HOLD_MS     400
 #define HOLD        2
@@ -11,19 +16,17 @@
 #define RELEASED    0
 
 #define DEBOUNCE    50  // Debouncing 50ms
+#define RESOLUTION  4   // How many values is one tick (rotation)
 
-// pin setup
-#define PIN_CLK     2
-#define PIN_DT      3
-#define PIN_SW      A1
 
 class MyEncoder : public Encoder {
 private:
-    unsigned long lastTick = 0;         // Last encoder revolution ms
+    int32_t last_Position = 0;          // Last encoder reading value
+    unsigned long last_Tick = 0;         // Last encoder revolution ms
+    bool last_State = LOW;               // Last Encoder Switch state
     uint8_t volume = 0;                 // Drink volume to pour
 
 public:
-    bool lastState = LOW;               // Last Encoder Switch state
     MyEncoder(uint8_t pin1 = PIN_CLK, uint8_t pin2 = PIN_DT);
     ~MyEncoder();
 

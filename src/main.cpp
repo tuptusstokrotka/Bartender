@@ -149,6 +149,9 @@ void encoderButton(){
     }
     /* ENCODER HOLD */
     case HOLD:{
+      /* RESET ENCODER VALUE TO 1 */
+      myEncoder.SetVolume(1);
+      /* CHANGE CURRENT PAGE */
       myDisplay.SwitchPage();
       break;
     }

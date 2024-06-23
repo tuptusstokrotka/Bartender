@@ -10,22 +10,22 @@ uint8_t MyEncoder::Pressed(){
 
     /* BUTTON RELEASED */
     if(digitalRead(PIN_SW) == HIGH){                    // BUTTON RELEASED
-        lastState = HIGH;                               // UPDATE LASTSTATE
+        last_State = HIGH;                              // UPDATE LASTSTATE
         return RELEASED;
     }
 
     /* BUTTON PRESSED && LASTSTATE PRESSED */
-    if(lastState == LOW){                               // BUTTON HAS NOT BEEN RELEASED YET
-        return -1;                                      // SKIP ITERATION //TODO SNAP TO ERROR
+    if(last_State == LOW){                              // BUTTON HAS NOT BEEN RELEASED YET
+        return -1;                                      // SKIP ITERATION
     }
 
     /* BUTTON PRESSED && LASTSTATE RELEASED */
-    lastState = LOW;                                    // BUTTON JUST PRESSED AND HAS BEEN RELEASED
+    last_State = LOW;                                   // BUTTON JUST PRESSED AND HAS BEEN RELEASED
 
     /* BUTTON HOLD */
-    unsigned long holding_time = millis();              // COUNT HOLDING TIME
+    unsigned long holding_Time = millis();              // COUNT HOLDING TIME
     while(digitalRead(PIN_SW) != HIGH){                 // WAIT UNTIL RELEASED
-        if(millis() - holding_time > HOLD_MS)           // BREAK AFTER 400ms
+        if(millis() - holding_Time > HOLD_MS)           // BREAK AFTER 400ms
             return HOLD;                                // HOLDING A BUTTON C:
     }
     /* BUTTON PRESS */
@@ -33,22 +33,31 @@ uint8_t MyEncoder::Pressed(){
 }
 
 uint8_t MyEncoder::Update(uint8_t *volume){
-    if (millis() - lastTick > DEBOUNCE) {
-        long newPosition = read() / 4;                  // cut int32 into 4 xD
-        *volume = (uint8_t)constrain(newPosition, 0, 100);        // Ograniczenie volume do maksymalnie 100 ml
-        lastTick = millis();                            // Get last encoder tick
+    if (millis() - last_Tick > DEBOUNCE) {
+        /* GET ENCODER READINGS */
+        int32_t current_position = read();
+        int32_t increment = (current_position - last_Position) / RESOLUTION;
+
+        /* CALCULATE HOW MUCH TO INCREMENT VOLUME IN RANGE [0, 100] */
+        int32_t new_volume = constrain(*volume + increment, 0, 100);
+
+        /* ADD DIFFERENCE TO THE VOLUME */
+        *volume = (uint8_t)new_volume;
+
+        /* UPDATE LAST VALUES */
+        last_Position = current_position;
+        last_Tick = millis();
     }
     return *volume;
-    //TODO IF HAVE ANY TIME
-    // RATHER THAN ASSIGNING VALUE VIA LINEAR FUNCTION
-    // INCREMENT VOLUME COUNTER ON CHANGE UP AND DOWN
-    // IF READ() (INT32) CHANGES BY SOME VALUE
+
+    // if (millis() - last_Tick > DEBOUNCE) {
+    //     long newPosition = read() / 4;                  // cut int32 into 4 xD
+    //     *volume = (uint8_t)constrain(newPosition, 0, 100);        // Ograniczenie volume do maksymalnie 100 ml
+    //     last_Tick = millis();                            // Get last encoder tick
+    // }
+    // return *volume;
 }
 
 void MyEncoder::SetVolume(uint8_t volume){
-    // BUG THIS WILL NOT WORK DUE TO UPDATE()
-    // VOLUME VALUE IS NOT INCREMENTED WITH EACH CHANGE
-    // VOLUME IS CALCULATED VIA LINEAR FUNCTION
-    // THUS THIS WILL FAIL TO SET VALUE
     MyEncoder::volume = volume;
 }

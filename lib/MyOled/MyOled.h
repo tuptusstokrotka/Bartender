@@ -11,9 +11,16 @@
 #define OLED_RESET 			A0
 #define OLED_I2C_ADDRESS 	0x3C
 
-#define ML_PER_SECOND 		(44.5 / 5.0)	// THIS HAS TO BE IN BRACES!
+// #define ML_PER_SECOND 		(44.5 / 5.0)	// THIS HAS TO BE IN BRACES!
+#include "globals.h"
 
 #define SSD1306_NO_SPLASH	// THIS IS NOT WORKING, has to change inside display class - f*ck it
+
+enum PAGE{
+	AUTO = 0,				// AUTOMATIC
+	CALIBRATE_START,		// SERVICE MODE - CALIBRATE VOLUME
+	CALIBRATE_STOP,			// SERVICE MODE - CALIBRATE VOLUME
+};
 
 // SPLASH SCREEN IMAGE DEFINITION
 const uint8_t PROGMEM splash[] = {
@@ -92,7 +99,16 @@ private:
 	 * @param offset Vertical offset to move string UP
 	 */
 	void PrintText(String text, uint8_t offset=0);
+
+	/**
+	 * @brief Same as PrintText but small font
+	 * @param text String to display
+	 * @param offset Vertical offset to move string UP
+	 */
+	void PrintSmallText(String text, uint8_t y_pos);
 public:
+	PAGE page = AUTO;
+
     MyOled();
     ~MyOled();
 
@@ -113,7 +129,14 @@ public:
 	 * @param volume Current volume desired to pour in milliliters
 	 */
     void Volume(uint8_t volume);
+	/**
+	 * @brief Draw a number + ml/s on a screen
+	 * @note Displays OLED
+	 * @param volume Current flowrate desired to pour in milliliters per second
+	 */
+    void Flow(uint8_t volume);
 
+	void Seconds(uint8_t volume);
 	// Drawing Pouring progress bar
 	/**
 	 * @brief Draw a frame and progress bar of pouring process
@@ -126,6 +149,12 @@ public:
 	 * @note Clears and Displays OLED
 	 */
     void Complete();
+
+	/**
+	 * @brief Draws page text on top of a screen
+	 * @note Displays OLED
+	 */
+    void PageUpdate(uint8_t volume);
 
 	// Combine All screen elements
 	/**
@@ -149,6 +178,8 @@ public:
      * @brief Display buffer on display
      */
     void Display();
+
+	void SwitchPage();
 };
 
 #endif

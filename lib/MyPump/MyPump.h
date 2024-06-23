@@ -3,10 +3,11 @@
 #pragma once
 
 #include "Arduino.h"
+#include "globals.h"
 
 #define DCMOTOR_PIN_COIL1 5
 
-#define ML_PER_SECOND (44.5 / 5.0)          // WATERPUMP FLOW_RATE
+// #define ML_PER_SECOND (44.5 / 5.0)          // WATERPUMP FLOW_RATE
 
 class MyPump{
 private:
@@ -20,6 +21,7 @@ public:
      * @param volume Current volume desired to pour in milliliters
      */
     void Start(uint16_t volume);
+    void Start();
 
     /**
      * @brief Check if water pump is still working based on the time required to pour desired ml.

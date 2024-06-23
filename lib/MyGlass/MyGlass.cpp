@@ -11,10 +11,10 @@ uint8_t MyGlass::State(uint8_t volume){
   bool state = digitalRead(MyGlass::pin);         // Check if glass still on the button
 
   /* NO GLASS ON THE BUTTON */
-  if(state == HIGH)
+  if(state == HIGH){
     filled_ml = 0;                                // CLEAR POURED VOLUME
     return NO_GLASS;                              // NO glass
-
+  }
   /* GLASS ON THE BUTTON */
   if(filled_ml == 0){                             // HAS NOT BEEN FILLED
     return EMPTY;                                 // NEW glass = No LIQUID

@@ -16,6 +16,23 @@ void MyOled::PrintText(String text, uint8_t offset){
     setCursor(x, y);
     print(text);
 }
+void MyOled::PrintSmallText(String text, uint8_t y_pos){
+    // SMALL TEXT
+    setTextSize(1);
+
+    // CENTER TEXT
+    int16_t _x, _y;
+    uint16_t textWidth, textHeight;
+    getTextBounds(text, 0, 0, &_x, &_y, &textWidth, &textHeight);
+
+    // SEND BUFFER STRING TO THE OLED
+    int16_t x = (SCREEN_WIDTH  - textWidth)  / 2;
+    setCursor(x, y_pos);
+    print(text);
+
+    // RETURN TO DEFAULT SIZE
+    setTextSize(3);
+}
 
 void MyOled::Init(){
     if (!begin(SSD1306_SWITCHCAPVCC, OLED_I2C_ADDRESS)) {
@@ -24,6 +41,9 @@ void MyOled::Init(){
     }
     setTextSize(3);
     setTextColor(SSD1306_WHITE);
+
+    // PRINT SPLASH SCREEN AFTER THE INIT
+    Splash();
 }
 
 void MyOled::Splash(){
@@ -37,12 +57,10 @@ void MyOled::Splash(){
     display();
 
     // LET THEM WATCH YOUR BEAUTIFUL LOGO
-    // #define MASOCHIST // DO IT - UNCOMMENT THIS LINE
-    #ifdef MASOCHIST
-        delay(20000);
-    #else
-        delay(2000);
-    #endif
+    delay(2000);
+
+    // CLEAR DISPLAY
+    clearDisplay();
 }
 
 void MyOled::Volume(uint8_t volume){
@@ -52,10 +70,27 @@ void MyOled::Volume(uint8_t volume){
     // SEND BUFFER STRING TO THE OLED
     // NOTE: experimental
     // ADD LITTLE OFFSET SO THAT PROGRESS BAR CAN FIT INTO THE SCREEN
-    PrintText(valueString, 4);
+    PrintText(valueString, 2);
+}
 
-    // DISPLAY TO SCREEN
-    display();
+void MyOled::Flow(uint8_t volume){
+    // CONCAT STRING
+    String valueString = String(volume) + " ml/s";
+
+    // SEND BUFFER STRING TO THE OLED
+    // NOTE: experimental
+    // ADD LITTLE OFFSET SO THAT PROGRESS BAR CAN FIT INTO THE SCREEN
+    PrintText(valueString, 2);
+}
+
+void MyOled::Seconds(uint8_t volume){
+    // CONCAT STRING
+    String valueString = String(volume) + " sek";
+
+    // SEND BUFFER STRING TO THE OLED
+    // NOTE: experimental
+    // ADD LITTLE OFFSET SO THAT PROGRESS BAR CAN FIT INTO THE SCREEN
+    PrintText(valueString, 2);
 }
 
 void MyOled::ProgressBar(float percentage){
@@ -73,22 +108,54 @@ void MyOled::ProgressBar(float percentage){
     drawLine(10,58,width,58,1);     // BAR
     drawLine(10,59,width,59,1);     // 4 PX
     drawLine(10,60,width,60,1);     // TALL
+
+    // DISPLAY TO SCREEN
+    display();
 }
 
 void MyOled::Complete(){
     // CLEAR DISPLAY
     Clear();
 
-    String valueString = "FINISHED!";
-
     // SEND BUFFER STRING TO THE OLED
+    String valueString = "Gotowe!";
     PrintText(valueString);
 
     // DISPLAY TO SCREEN
     display();
 
     // LET THEM WATCH
-    delay(3000);
+    delay(1000);
+    Clear();
+}
+
+void MyOled::PageUpdate(uint8_t volume){
+    static uint8_t vol = 0;
+    static PAGE last = AUTO;
+
+    if(last != page || vol != volume){
+        Clear();
+        // DISPLAY TO SCREEN
+        last = page;
+        vol = volume;
+    }
+    // SET STRING BASED ON PAGE
+    switch(page){
+        default:
+        case AUTO:
+            PrintSmallText("Barman",0);
+            Volume(volume);
+            break;
+        case CALIBRATE_START:
+            PrintSmallText("Kalibracja",0);
+            Seconds(volume);
+            break;
+        case CALIBRATE_STOP:
+            PrintSmallText("Kalibracja",0);
+            Volume(volume);
+            break;
+    }
+    display();
 }
 
 void MyOled::Pouring(unsigned long start_time, uint8_t volume){
@@ -100,11 +167,6 @@ void MyOled::Pouring(unsigned long start_time, uint8_t volume){
     update volume remining on the screen - decrement
     */
 
-    // CONCAT STRING
-    String valueString = String(volume) + " ml";
-    // SEND BUFFER STRING TO THE OLED
-    PrintText(valueString, 4);
-
     // COUNT PROCESS COMPLETION PERCENTAGE
     // TIME WHEN IT WILL STOP POURING
     unsigned long stop_time = start_time + (volume / ML_PER_SECOND * 1000);
@@ -115,13 +177,26 @@ void MyOled::Pouring(unsigned long start_time, uint8_t volume){
     // CONVERT MS TO %
     float percentage = int(100-float(a)/float(b)*100);
 
+    // DRAW DRINK VOLUME
+    Volume(volume);
     // DRAW PROGRESS BAR
     ProgressBar(percentage);
-
-    // DISPLAY TO SCREEN
-    display();
 }
 
 void MyOled::Clear(){ clearDisplay(); }
 
 void MyOled::Display(){ display(); }
+
+void MyOled::SwitchPage(){
+    switch (page) {
+        case AUTO:
+            page = CALIBRATE_START;
+            break;
+        case CALIBRATE_START:
+            page = CALIBRATE_STOP;
+            break;
+        case CALIBRATE_STOP:
+            page = AUTO;
+            break;
+    }
+}

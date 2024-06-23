@@ -12,6 +12,10 @@ void MyPump::Start(uint16_t volume){
     turn_off_time += (volume / ML_PER_SECOND * 1000);   // SET DELAY BASED ON THE WATERPUMP FLOW_RATE
 }
 
+void MyPump::Start(){
+    digitalWrite(DCMOTOR_PIN_COIL1, HIGH);              // TURN ON WATER PUMP
+}
+
 bool MyPump::Working(){
     return (millis() < turn_off_time);                  // TIME HAS PASSED?
 }

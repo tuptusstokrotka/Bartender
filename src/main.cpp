@@ -3,8 +3,13 @@
 #include "MyOled.h"
 #include "MyPump.h"
 #include "MyServo.h"
+#include "MyLeds.h"
 
-#define GLASSES 7
+#include "globals.h"
+// FLOW RATE
+float ML_PER_SECOND = (44.5 / 5.0);
+// DRINK VOLUME
+uint8_t volume = 0;
 
 // KRAŃCÓWKI - kieliszki
 MyGlass myGlasses[GLASSES]={
@@ -24,100 +29,127 @@ MyOled myDisplay;
 MyPump myPump;
 // SERVO
 MyServo myServo;
+// LEDS
+MyLeds myLeds;
 
-void setup() {
-  Serial.begin(9600);
-  myDisplay.Init();
-  myDisplay.Splash();
-}
 
-void loop() {
-  /* CHECK ENCODER ROTATOR */
-  myEncoder.Update();
-  /* SET GLOBAL VOLUME */
-  uint8_t volume = myEncoder.GetVolume();
-
-  /* PRINT VOLUME */
-  myDisplay.Clear();
-  myDisplay.Volume(volume);
-
+void CheckGlasses(){
   /* CHECK STATES - NEW GLASSES */
   for(uint8_t i=0; i<GLASSES; i++){
     /* SETUP LEDS */
     switch( myGlasses[i].State(volume) ){
       case EMPTY:{
         /* SET LED TO RED */
-        //myLed.Set(i, RED);
+        myLeds.SetGlass(i, _red);
         break;
       }
       case HALF:{
         /* SET LED TO YELLOW */
-        //myLed.Set(i, YELLOW);
+        myLeds.SetGlass(i, _yellow);
         break;
       }
       case FILLED:{
         /* SET LED TO GREEN */
-        //myLed.Set(i, GREEN);
+        myLeds.SetGlass(i, _green);
         break;
       }
       case NO_GLASS:
       default:{
         /* SET LED TO WHITE */
-        //myLed.Set(i, WHITE);
+        myLeds.SetGlass(i, _white);
         break;
       }
     }
   }
+}
+void Calibrate(){
+  static uint8_t sekundy=1;
+  if(myDisplay.page == CALIBRATE_START){
+    /* START PUMPING */
+    myPump.Start();
+    delay(volume*1000);
+    myPump.Stop();
+    sekundy=volume;
+  }
+  else{
+    ML_PER_SECOND = volume/sekundy;        // this SHOULD provide milliliters per second rate
+    myDisplay.Complete();
+  }
+  myDisplay.SwitchPage();
+}
+void ServeDrinks(){
+  /* COUNT FILLED GLASSES */
+  uint8_t filled =0;
+  for(uint8_t i=0; i<GLASSES; i++){
+    /* CHECK IF GLASS CAN BE FILLED */
+    switch( myGlasses[i].State(volume) ){
+      case EMPTY:
+      case HALF:{
+        myDisplay.Clear();
+        /* MOVE SERVO TO GLASS */
+        myServo.MoveTo(i);
 
-  /* CHECK ENCODER BUTTON */
+        /* COUNT REMINDING MILLILITERS */
+        uint8_t pour_ml = myGlasses[i].Difference(volume);
+        /* ADD MILLILITERS AS FILLED */
+        myGlasses[i].Fill(pour_ml);
+        /* Start FIlling Timer */
+        unsigned long progress_timer = millis();
+        /* START PUMPING */
+        myPump.Start(pour_ml);
+        filled++;
+        /* SET LED TO ORANGE */
+        myLeds.SetGlass(i, _orange);
+
+        while (myPump.Working()){
+          /* TURN ON ANIMATION */
+          myDisplay.Pouring(progress_timer, pour_ml);
+        }
+        // DRAW PROGRESS BAR
+        myDisplay.ProgressBar(100);
+
+        /* STOP PUMPING */
+        myPump.Stop();
+        delay(350);
+
+        /* SET LED TO GREEN */
+        //myLeds.setPixelColor(i, GREEN);            //TODO
+        break;
+      }
+      case FILLED:
+      case NO_GLASS:
+        break;
+    }
+  }
+
+  /* ANY GLASSED FILLED */
+  if(filled!=0){
+    myServo.MoveTo(0);
+  }
+
+  /* ALWAYS DRAW SUCCESS */
+  myDisplay.Complete();
+}
+void encoderButton(){
   switch(myEncoder.Pressed()){
     /* ENCODER PRESSED */
     case PRESS:{
-      for(uint8_t i=0; i<GLASSES; i++){
-
-        /* CHECK IF GLASS CAN BE FILLED */
-        switch( myGlasses[i].State(volume) ){
-          case EMPTY:
-          case HALF:{
-            myDisplay.Clear();
-            /* MOVE SERVO TO GLASS */
-            myServo.MoveTo(i);
-
-            /* COUNT REMINDING MILLILITERS */
-            uint8_t pour_ml = myGlasses[i].Difference(volume);
-            /* ADD MILLILITERS AS FILLED */
-            myGlasses[i].Fill(pour_ml);
-            /* Start FIlling Timer */
-            unsigned long progress_timer = millis();
-            /* START PUMPING */
-            myPump.Start(pour_ml);
-            /* SET LED TO ORANGE */           //TODO
-            //myLed.Set(i, ORANGE);
-            while (myPump.Working()){
-              /* TURN ON ANIMATION */
-              myDisplay.Pouring(progress_timer, pour_ml);
-            }
-            /* STOP PUMPING */
-            myPump.Stop();
-            delay(200);
-
-            /* SET LED TO GREEN */
-            //myLed.Set(i, GREEN);            //TODO
-            break;
-          }
-          case FILLED:
-          case NO_GLASS:
-            break;
-        }
+      if(volume<=0)
+        return;
+      switch (myDisplay.page){
+        case PAGE::AUTO:
+          ServeDrinks();
+          break;
+        case PAGE::CALIBRATE_START:
+        case PAGE::CALIBRATE_STOP:
+          Calibrate();
+          break;
       }
-      myServo.Back();
-      myDisplay.Complete();
       break;
     }
     /* ENCODER HOLD */
     case HOLD:{
-      Serial.println("HOLD");
-      /* Do something... */
+      myDisplay.SwitchPage();
       break;
     }
     /* ENCODER RELEASED */
@@ -125,6 +157,30 @@ void loop() {
     case RELEASED:
       break;
   }
+}
+
+
+void setup() {
+  // SERIAL COM INIT
+  Serial.begin(9600);
+  // SERVO INIT AND SET
+  myServo.Init();
+  // DISPLAY INIT AND SPLASH
+  myDisplay.Init();
+}
+
+void loop() {
+  /* CHECK ENCODER ROTATION AND SAVE VOLUME */
+  myEncoder.Update(&volume);
+
+  /* PRINT OLED PAGE */
+  myDisplay.PageUpdate(volume);
+
+  /* CHECK GLASSES STATES -*/
+  CheckGlasses();
+
+  /* CHECK ENCODER BUTTON */
+  encoderButton();
 
   delay(10);
 }

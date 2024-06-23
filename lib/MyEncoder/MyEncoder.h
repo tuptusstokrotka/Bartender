@@ -19,11 +19,11 @@
 
 class MyEncoder : public Encoder {
 private:
-    bool lastState = LOW;               // Last Encoder Switch state
     unsigned long lastTick = 0;         // Last encoder revolution ms
     uint8_t volume = 0;                 // Drink volume to pour
 
 public:
+    bool lastState = LOW;               // Last Encoder Switch state
     MyEncoder(uint8_t pin1 = PIN_CLK, uint8_t pin2 = PIN_DT);
     ~MyEncoder();
 
@@ -37,14 +37,11 @@ public:
 
     /**
      * @brief Update Encoder while rotating
-     */
-    void Update();
-
-    /**
-     * @brief Get volume counter value
+     * Get volume counter value
      * @return Current volume desired to pour in milliliters
      */
-    uint8_t GetVolume();
+    uint8_t Update(uint8_t *volume);
+
     /**
      * @brief Set volume to pour
      * @param volume in milliliters

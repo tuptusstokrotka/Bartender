@@ -4,6 +4,7 @@
 #include "MyPump.h"
 #include "MyServo.h"
 #include "MyLeds.h"
+#include "EEPROM.h"
 
 #include "globals.h"
 // FLOW RATE
@@ -31,7 +32,49 @@ MyPump myPump;
 MyServo myServo;
 // LEDS
 MyLeds myLeds;
+// EEPROM struct
+myEeprom _eeprom;
 
+void EEPROM_Setup(){
+  /* GET 2 EEPROM REGISTERS */
+  EEPROM.get(EEPROM_ADDR_START, _eeprom);
+
+  /* SAVE VALUES TO GLOBAL */
+  volume =_eeprom._volume;
+  ML_PER_SECOND = _eeprom._flowrate;
+
+  myEncoder.SetVolume(volume);
+}
+void EEPROM_Save(uint8_t _param){
+  switch (_param){
+  case EEPROM_FLOW_RATE:{
+    /* NO CHANGE IN VALUES */
+    if(_eeprom._flowrate==ML_PER_SECOND)
+      return;
+
+    /* SAVE VALUE FROM GLOBAL */
+    _eeprom._flowrate=ML_PER_SECOND;
+    EEPROM.put(EEPROM_FLOW_RATE, _eeprom._flowrate);
+    break;
+  }
+  case EEPROM_VOLUME:{
+    /* NO CHANGE IN VALUES */
+    if(_eeprom._volume==volume)
+      return;
+
+    /* SAVE VALUE FROM GLOBAL */
+    _eeprom._volume=volume;
+    EEPROM.put(EEPROM_VOLUME, _eeprom._volume);
+    break;
+  }
+  default:
+    break;
+  }
+}
+void EEPROM_Save_All(){
+  EEPROM_Save(EEPROM_FLOW_RATE);
+  EEPROM_Save(EEPROM_VOLUME);
+}
 
 void CheckGlasses(){
   /* CHECK STATES - NEW GLASSES */
@@ -79,7 +122,7 @@ void Calibrate(){
 }
 void ServeDrinks(){
   /* COUNT FILLED GLASSES */
-  uint8_t filled =0;
+  uint8_t glasses_filled =0;
   for(uint8_t i=0; i<GLASSES; i++){
     /* CHECK IF GLASS CAN BE FILLED */
     switch( myGlasses[i].State(volume) ){
@@ -93,11 +136,12 @@ void ServeDrinks(){
         uint8_t pour_ml = myGlasses[i].Difference(volume);
         /* ADD MILLILITERS AS FILLED */
         myGlasses[i].Fill(pour_ml);
+        glasses_filled++;
+
         /* Start FIlling Timer */
         unsigned long progress_timer = millis();
         /* START PUMPING */
         myPump.Start(pour_ml);
-        filled++;
         /* SET LED TO ORANGE */
         myLeds.SetGlass(i, _orange);
 
@@ -105,7 +149,7 @@ void ServeDrinks(){
           /* TURN ON ANIMATION */
           myDisplay.Pouring(progress_timer, pour_ml);
         }
-        // DRAW PROGRESS BAR
+        /* DRAW 100% PROGRESS BAR - make sure it is always filled at the end */
         myDisplay.ProgressBar(100);
 
         /* STOP PUMPING */
@@ -113,7 +157,7 @@ void ServeDrinks(){
         delay(350);
 
         /* SET LED TO GREEN */
-        //myLeds.setPixelColor(i, GREEN);            //TODO
+        myLeds.SetGlass(i, _green);
         break;
       }
       case FILLED:
@@ -123,26 +167,29 @@ void ServeDrinks(){
   }
 
   /* ANY GLASSED FILLED */
-  if(filled!=0){
+  if(glasses_filled!=0){
     myServo.MoveTo(0);
   }
 
   /* ALWAYS DRAW SUCCESS */
   myDisplay.Complete();
 }
-void encoderButton(){
+void EncoderButton(){
   switch(myEncoder.Pressed()){
     /* ENCODER PRESSED */
     case PRESS:{
       if(volume<=0)
         return;
+
       switch (myDisplay.page){
         case PAGE::AUTO:
           ServeDrinks();
+          EEPROM_Save(EEPROM_VOLUME);
           break;
         case PAGE::CALIBRATE_START:
         case PAGE::CALIBRATE_STOP:
           Calibrate();
+          EEPROM_Save(EEPROM_FLOW_RATE);
           break;
       }
       break;
@@ -170,6 +217,8 @@ void setup() {
   myServo.Init();
   // DISPLAY INIT AND SPLASH
   myDisplay.Init();
+  // GET DATA FROM EEPROM
+  EEPROM_Setup();
 }
 
 void loop() {
@@ -183,7 +232,7 @@ void loop() {
   CheckGlasses();
 
   /* CHECK ENCODER BUTTON */
-  encoderButton();
+  EncoderButton();
 
   delay(10);
 }

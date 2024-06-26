@@ -5,10 +5,8 @@
 #include <Servo.h>
 
 #define SERVO_PIN_SIG A2
-#define MIN_ANG 5               // Minimum Servo Angle
-#define MAX_ANG 175             // Maximum Servo Angle
 
-#define OFFSET 0               //TODO TEST IF NEEDED / IF LIMITS DOES NOT HELP
+#define OFFSET 0
 #define MAX_MOVE_TIME 1000      // HOW LONG IT CAN MOVE
 
 class MyServo : public Servo {

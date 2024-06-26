@@ -39,11 +39,14 @@ uint8_t MyEncoder::Update(uint8_t *volume){
         int32_t increment = (current_position - last_Position);
 
         /* CHANGE NOT TRIGGERED */
-        if(increment < RESOLUTION)
+        if(abs(increment) < RESOLUTION)
             return *volume;
 
-        /* CALCULATE HOW MUCH TO INCREMENT VOLUME IN RANGE [0, 100] */
-        *volume = (uint8_t)constrain(*volume + 1, 0, 100);
+        /* BASED ON THE ENCODER DIRECTION ADD-or-SUBTRACT */
+        increment > 0 ? *volume + 1 : *volume - 1;
+
+        /* LIMIT VOLUME IN RANGE [0, 100] */
+        *volume = (uint8_t)constrain(*volume, 0, 100);
 
         /* UPDATE LAST VALUES */
         last_Position = current_position;

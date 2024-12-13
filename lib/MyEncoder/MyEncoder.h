@@ -21,13 +21,13 @@
 
 class MyEncoder : public Encoder {
 private:
-    int32_t last_Position = 0;          // Last encoder reading value
-    unsigned long last_Tick = 0;         // Last encoder revolution ms
-    bool last_State = LOW;               // Last Encoder Switch state
-    uint8_t volume = 0;                 // Drink volume to pour
+    int last_Position = 0;              // Last encoder reading value
+    unsigned long last_Tick = 0;        // Last encoder revolution ms
+    bool last_State = LOW;              // Last Encoder Switch state
+    unsigned int volume = 0;            // Drink volume to pour
 
 public:
-    MyEncoder(uint8_t pin1 = PIN_CLK, uint8_t pin2 = PIN_DT);
+    MyEncoder(unsigned int pin1 = PIN_CLK, unsigned int pin2 = PIN_DT);
     ~MyEncoder();
 
     /**
@@ -36,20 +36,20 @@ public:
      * @return + PRESS (1)
      * @return + RELEASE (0)
      */
-    uint8_t Pressed();
+    unsigned int Pressed();
 
     /**
      * @brief Update Encoder while rotating
      * Get volume counter value
      * @return Current volume desired to pour in milliliters
      */
-    uint8_t Update(uint8_t *volume);
+    unsigned int Update(unsigned int *volume);
 
     /**
      * @brief Set volume to pour
      * @param volume in milliliters
      */
-    void SetVolume(uint8_t volume);
+    void SetVolume(unsigned int volume);
 };
 
 #endif

@@ -12,6 +12,7 @@
 
 enum COLOR {
     // uint32_t = WHITE, RED, GREEN, BLUE
+    _black   = 0x0000, // Clear led
     _red     = 0x0f00, // Only the red component is fully on
     _green   = 0x00f0, // Only the green component is fully on
     _blue    = 0x000f, // Only the blue component is fully on
@@ -29,7 +30,11 @@ public:
     MyLeds();
     ~MyLeds();
 
-    void SetGlass(uint8_t n, uint32_t c);
+    void ResetGlass(unsigned int num);
+
+    void SetGlass(unsigned int num, unsigned int color);
+
+    void SetGlassPercent(unsigned int num, unsigned int percent);
 };
 
 #endif

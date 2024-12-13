@@ -2,7 +2,9 @@
 #define MYSERVO_H
 #pragma once
 
-#include <Servo.h>
+#include "Arduino.h"
+#include "Servo.h"
+#include "MyGlass.h"
 
 #define SERVO_PIN_SIG A2
 
@@ -11,18 +13,14 @@
 
 class MyServo : public Servo {
 private:
-    // kąty dla każdego przycisku / szklanki
-    // float btn_pos[7] = { 0, 28, 60, 90, 124, 160, 180 };
-    float btn_pos[7] = { 0, 27, 58, 91, 121, 152, 190 };
+    float* angles;              // Dynamically allocated array for glasses positions
+    unsigned int glasses;       // Number of glasses
 public:
-    MyServo();
+    MyServo(unsigned int glasses, const GlassConfig* config);
     ~MyServo();
 
-    // Initialize Servo
-    void Init();
-
     // Write position to the glass
-    void MoveTo(uint8_t glass);
+    void MoveTo(unsigned int glass);
 
 };
 

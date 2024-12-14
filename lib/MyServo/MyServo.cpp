@@ -15,8 +15,17 @@ MyServo::MyServo(unsigned int glasses, const GlassConfig* config) : Servo () {
 
     for (unsigned int i = 0; i < glasses; i++) {
         angles[i] = i;                  //THIS WORKS
-        angles[i] = config->angle[i];   //FIXME THIS FAILED
+        // angles[i] = config->angle[i];   //THIS FAILED
+        *angles = config->angle;        //THIS WORKS
     }
+
+    //DEBUG
+    for (unsigned int i = 0; i < glasses; i++) {
+        Serial.print(angles[i]);
+        Serial.print(" ");
+    }
+    Serial.println(" ");
+    Serial.println(" ");
 }
 
 MyServo::~MyServo(){}

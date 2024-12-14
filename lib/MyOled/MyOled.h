@@ -92,6 +92,7 @@ const uint8_t PROGMEM splash[] = {
 
 class MyOled : private Adafruit_SSD1306 {
 private:
+public:
 	/**
 	 * @brief Helper function. Based on the string length draws string centered on a screen.
 	 * @note Overflow possible
@@ -106,7 +107,6 @@ private:
 	 * @param offset Vertical offset to move string UP
 	 */
 	void PrintSmallText(String text, uint8_t y_pos);
-public:
 	PAGE page = AUTO;
 
     MyOled();

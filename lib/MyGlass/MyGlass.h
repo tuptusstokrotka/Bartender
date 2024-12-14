@@ -2,6 +2,7 @@
 #define MyGlass_H
 #pragma once
 
+#include "GlassConfig.h"
 #include "MyWeight.h"
 #include "MyLeds.h"
 #include "MyPump.h"
@@ -10,13 +11,6 @@
 #define HALF        2
 #define EMPTY       1
 #define NO_GLASS    0
-
-struct GlassConfig{
-  unsigned int pin;
-  unsigned int dout;
-  unsigned int sck;
-  float angle;
-};
 
 enum GlassState{
     No_Glass,
@@ -46,7 +40,7 @@ private:
     unsigned int Difference(unsigned int volume);     // Count the remaining volume to pour
 
 public:
-    MyGlass(const GlassConfig* config, unsigned int index);
+    MyGlass(const GlassConfig* config, MyLeds* led, unsigned int index);
     ~MyGlass();
 
     /**

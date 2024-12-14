@@ -7,8 +7,9 @@
 #include "eeprom_address.h"
 
 #include "MyGlass.h"
-#include "MyEncoder.h"
+#include "MyLeds.h"
 #include "MyOled.h"
+#include "MyEncoder.h"
 #include "MyServo.h"
 
 enum BartenderState{
@@ -24,6 +25,7 @@ private:
     unsigned int glasses    = 0;
 
     MyGlass **myGlasses = nullptr;
+    MyLeds *led;
     MyOled myDisplay;
     MyEncoder myEncoder;
     MyServo *myServo;
@@ -46,6 +48,8 @@ public:
     void ServeDrinks();
 
     void Update();
+
+    void Test();
 };
 
 #endif

@@ -1,5 +1,15 @@
 #include "globals.h"
+#include "GlassConfig.h"
 #include "Bartender.h"
+
+GlassConfig GLASS_PINS[GLASSES] = {
+  {MICROSWITCH_2_PIN_COM, 1, 2, 0},
+  {MICROSWITCH_3_PIN_COM, 1, 2, 30},
+  {MICROSWITCH_4_PIN_COM, 1, 2, 60},
+  {MICROSWITCH_5_PIN_COM, 1, 2, 90},
+  {MICROSWITCH_6_PIN_COM, 1, 2, 120},
+  {MICROSWITCH_7_PIN_COM, 1, 2, 150}
+};
 
 Bartender ShotDoser(GLASSES, GLASS_PINS);
 
@@ -14,9 +24,8 @@ void setup() {
 
 void loop() {
   /* Update bartender */
-  ShotDoser.Update();
+  // ShotDoser.Update();
   // delay(10);
 
-  // ShotDoser.SetVolume(100);
-  // ShotDoser.ServeDrinks();
+  ShotDoser.Test();
 }

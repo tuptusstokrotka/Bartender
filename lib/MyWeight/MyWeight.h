@@ -9,7 +9,7 @@
 #define LOADCELL_DOUT_PIN 15    // was 2
 #define LOADCELL_SCK_PIN  13    // was 3
 
-class MyWeight : public HX711{
+class MyWeight{
 private:
     HX711 myScale;              // HX711 instance
     unsigned int dout;
@@ -18,8 +18,6 @@ private:
     long  adc_reading = 0;      // ADC reading
     float converted   = 0;      // ADC converted by scale factor
     long  offset      = 0;      // Offset when tare
-    bool  refresh     = false;  // True if new data to showcase
-    bool  hold        = false;  // True if hold the weight measurement
 
     void Showcase();
 
@@ -31,11 +29,9 @@ public:
 
     void Calibrate();
 
-    void Measure();
+    int Measure();
 
     void Zero();
-
-    void Hold();
 };
 
 #endif

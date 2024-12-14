@@ -169,6 +169,7 @@ void MyOled::Pouring(unsigned long start_time, uint8_t volume){
 
     // COUNT PROCESS COMPLETION PERCENTAGE
     // TIME WHEN IT WILL STOP POURING
+    #define ML_PER_SECOND 44.5/5
     unsigned long stop_time = start_time + (volume / ML_PER_SECOND * 1000);
     // REMINING TIME TILL STOP
     long a = (stop_time-millis());

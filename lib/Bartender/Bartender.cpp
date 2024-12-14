@@ -4,20 +4,14 @@ Bartender::Bartender(unsigned int glasses, const GlassConfig* config){
     this->glasses = glasses;
     this->volume = EEPROM.read(EEPROM_VOLUME);
 
+    // LED Strip init
+    led = new MyLeds();
+
     // Allocate an array of pointers to MyGlass
     myGlasses = new MyGlass*[glasses];
     for(unsigned int i = 0; i < glasses; i++){
-        myGlasses[i] = new MyGlass(config, i);
+        myGlasses[i] = new MyGlass(config, led, i);
     }
-
-    /*
-    myGlasses[0] = new MyGlass(MICROSWITCH_2_PIN_COM);
-    myGlasses[1] = new MyGlass(MICROSWITCH_3_PIN_COM);
-    myGlasses[2] = new MyGlass(MICROSWITCH_4_PIN_COM);
-    myGlasses[3] = new MyGlass(MICROSWITCH_5_PIN_COM);
-    myGlasses[4] = new MyGlass(MICROSWITCH_6_PIN_COM);
-    myGlasses[5] = new MyGlass(MICROSWITCH_7_PIN_COM);
-    */
 
     // SERVO INIT AND SET
     myServo = new MyServo(glasses, config);
@@ -121,4 +115,44 @@ void Bartender::EncoderUpdate(){
         case RELEASED:
         break;
     }
+}
+
+void Bartender::Test(){
+    for(unsigned int i = 0; i < glasses; i++){
+        // OLED TEST
+        myDisplay.Clear();
+        myDisplay.PrintSmallText("SMALL",0);
+        myDisplay.PrintSmallText("TEXT",2);
+        delay(500);
+
+        myDisplay.Clear();
+        myDisplay.PrintText("BIG TEXT",0);
+        delay(500);
+
+        // SERVO TEST
+        myServo->MoveTo(i);
+        delay(500);
+
+        // SCALE TEST
+        myGlasses[i]->GetVolume();
+        // myGlasses[i]->beam->Measure();
+        delay(500);
+
+        // LED TEST - white presence
+        led->SetGlass(i, _white);
+        delay(500);
+
+        // LED TEST - gradient fill
+        for(unsigned int j = 0; j < 100; j++){
+            led->SetGlassPercent(i, j);
+        }
+        delay(500);
+    }
+
+    // PUMP TEST
+    #include "MyPump.h"
+    MyPump TEST_PUMP;
+    TEST_PUMP.Start();
+    delay(500);
+    TEST_PUMP.Stop();
 }

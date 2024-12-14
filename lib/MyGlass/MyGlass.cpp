@@ -1,8 +1,9 @@
 #include "MyGlass.h"
 
-MyGlass::MyGlass(const GlassConfig* config, unsigned int index){
+MyGlass::MyGlass(const GlassConfig* config, MyLeds* led, unsigned int index){
     this->pin = config->pin;
     this->glass_index = index;
+    this->led = led;
 
     pinMode(pin, INPUT_PULLUP);
     beam = new MyWeight(config->dout, config->sck);
@@ -27,9 +28,9 @@ void MyGlass::Fill(unsigned int volume){
         case Half:{
             //TODO tare glass weight, offset this value in get_value()
             while(filled_ml < volume){                  // Excpected volume is reached
-                filled_ml = beam->get_value();          // Measure glass weight
+                filled_ml = beam->Measure();            // Measure glass weight
                 /* LED - Gradient in range 0-100% */
-                led->SetGlassPercent(glass_index, int(filled_ml / volume * 100) );
+                led->SetGlassPercent(glass_index, int(float(filled_ml / volume) * 100) );
                 myPump.Start();                         // Start pouring
             }
 
@@ -43,7 +44,7 @@ void MyGlass::Check(unsigned int volume){
     bool state = digitalRead(MyGlass::pin);             // Check if glass still on the button
 
     //CHECK If this is not colliding with tare
-    unsigned int current_weight = beam->get_value();    // Measure glass weight
+    int current_weight = beam->Measure();               // Measure glass weight
     Serial.print(String(glass_index));
     (current_weight < 1234) ? Serial.println(": NO_GLASS") : Serial.println(": GLASS");
 
@@ -56,7 +57,7 @@ void MyGlass::Check(unsigned int volume){
     /* GLASS ON THE BUTTON */
     if(filled_ml == 0){                                 // HAS NOT BEEN FILLED
         status = GlassState::Empty;                     // NEW glass = No LIQUID
-        beam->tare();                                   // Offset glass weight
+        beam->Zero();                                   // Offset glass weight
         led->SetGlass(glass_index, _white);             // LED - WHITE
     }
     else if(filled_ml < volume){                        // FILLED LESS THAN CURRENT VOLUME

@@ -30,9 +30,28 @@ private:
     MyEncoder myEncoder;
     MyServo *myServo;
 
-    void GlassesUpdate();
-    void DisplayUpdate();
-    void EncoderUpdate();
+    /**
+     * @brief Check each glass strain gauge reading.
+     * Update glass status.
+     * @note Status includes selected volume,
+     * it marks glass as full or half (with liquid but not full)
+     */
+    void GlassesUpdate(void);
+    /**
+     * @brief Update currently displayed data on the OLED
+     */
+    void DisplayUpdate(void);
+    /**
+     * @brief Read and check encoder status
+     * Update both encoder revolutions and button press.
+     *
+     * @note default behaviour:
+     *
+     * - PRESS - serve drinks
+     *
+     * - HOLD - calibrate
+     */
+    void EncoderUpdate(void);
 
     BartenderState GetState();
     void SetState(BartenderState status);

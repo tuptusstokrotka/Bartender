@@ -10,13 +10,18 @@ MyLeds::MyLeds(){
         setPin(LEDS_PIN);
     #endif
 
-    for(int i=0; i<NUMPIXELS; i++){
-        setPixelColor(i, _white);
-    }
-    show();
+    // for(int i=0; i<NUMPIXELS; i++){
+    //     setPixelColor(i, _white);
+    // }
+    // show();
 }
 
 MyLeds::~MyLeds(){}
+
+void MyLeds::ResetAll(void){
+    fill(_black, 0, GLASSES);
+    show();
+}
 
 void MyLeds::ResetGlass(unsigned int num){
     SetGlass(num, _black);
@@ -33,9 +38,9 @@ void MyLeds::SetGlassPercent(unsigned int num, unsigned int percent){
     if (percent > 100) percent = 100;
 
     // Calculate red and green intensity based on percentage
-    uint8_t red = (255 * (100 - percent)) / 100; // Red decreases as percent increases
-    uint8_t green = (255 * percent) / 100;      // Green increases as percent increases
-    uint8_t blue = 0;                           // Blue stays off
+    uint8_t red   = (255 * (100 - percent)) / 100;  // Red decreases as percent increases
+    uint8_t green = (255 * percent) / 100;          // Green increases as percent increases
+    uint8_t blue   = 0;                             // Blue stays off
 
     // Combine the components into a 32-bit color
     uint32_t color = (red << 16) | (green << 8) | blue;

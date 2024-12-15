@@ -1,11 +1,11 @@
 #include "MyGlass.h"
 
 MyGlass::MyGlass(const GlassConfig* config, MyLeds* led, unsigned int index){
-    this->pin = config->pin;
+    this->pin = config->pin; //DELETE - this does not apply to the straingauge
     this->glass_index = index;
     this->led = led;
 
-    pinMode(pin, INPUT_PULLUP);
+    pinMode(pin, INPUT_PULLUP); //DELETE - this does not apply to the straingauge
     beam = new MyWeight(config->dout, config->sck);
 }
 
@@ -45,7 +45,7 @@ void MyGlass::Check(unsigned int volume){
 
     //CHECK If this is not colliding with tare
     int current_weight = beam->Measure();               // Measure glass weight
-    Serial.print(String(glass_index));
+    Serial.print(String(glass_index)); //TODO
     (current_weight < 1234) ? Serial.println(": NO_GLASS") : Serial.println(": GLASS");
 
     /* NO GLASS ON THE BUTTON */

@@ -34,6 +34,8 @@ void MyServo::MoveTo(unsigned int glass){
     attach(SERVO_PIN_SIG);                      // LET IT MOVE
 
     write(angles[glass] + OFFSET);              // Set glass position
+
+    // while (read() != (angles[glass] + OFFSET)){;}
     delay(MAX_MOVE_TIME);                       // LITTLE DELAY TO SET SERVO
 
     detach();                                   // STOP JITTERING

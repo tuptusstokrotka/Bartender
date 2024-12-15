@@ -24,11 +24,11 @@ enum COLOR {
 };
 
 class MyLeds : public Adafruit_NeoPixel{
-private:
-
 public:
     MyLeds();
     ~MyLeds();
+
+    void ResetAll(void);
 
     void ResetGlass(unsigned int num);
 

@@ -5,8 +5,6 @@
 
 #define GLASSES 7
 
-
-
 #define MICROSWITCH_1_PIN_COM 4
 #define MICROSWITCH_2_PIN_COM 6
 #define MICROSWITCH_3_PIN_COM 7
@@ -15,7 +13,5 @@
 #define MICROSWITCH_6_PIN_COM 10
 #define MICROSWITCH_7_PIN_COM 11
 #define MICROSWITCH_8_PIN_COM 12
-
-
 
 #endif

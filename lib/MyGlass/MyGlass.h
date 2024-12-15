@@ -21,6 +21,7 @@ enum GlassState{
 
 class MyGlass{
 private:
+    //DELETE the pin - deprecated
     unsigned int pin;               // ARDUINO PIN ASSIGNED TO THE SWITCH
     unsigned int glass_index;       // Glass index for the aRGB led
 

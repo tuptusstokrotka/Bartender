@@ -33,6 +33,8 @@ unsigned int MyEncoder::Pressed(){
 }
 
 unsigned int MyEncoder::Update(unsigned int *volume){
+    unsigned int last_vol = *volume; //DEBUG
+
     if (millis() - last_Tick > DEBOUNCE) {
         /* GET ENCODER READINGS */
         int current_position = read();
@@ -52,6 +54,11 @@ unsigned int MyEncoder::Update(unsigned int *volume){
         last_Position = current_position;
         last_Tick = millis();
     }
+
+    if(last_vol != *volume)            //DEBUG
+        Serial.print("volume: ");      //DEBUG
+        Serial.println(*volume);       //DEBUG
+
     return *volume;
 
     // if (millis() - last_Tick > DEBOUNCE) {
@@ -62,6 +69,7 @@ unsigned int MyEncoder::Update(unsigned int *volume){
     // return *volume;
 }
 
+//DELETE
 void MyEncoder::SetVolume(unsigned int volume){
     MyEncoder::volume = volume;
 }

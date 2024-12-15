@@ -67,6 +67,8 @@ void Bartender::ServeDrinks(){
         myServo->MoveTo(i);
         myGlasses[i]->Fill(volume);
     }
+    /* return to idle */
+    SetState(idle);
 }
 
 void Bartender::GlassesUpdate(){
@@ -76,64 +78,64 @@ void Bartender::GlassesUpdate(){
 }
 
 void Bartender::DisplayUpdate(){
-
+    //TODO
 }
 
 void Bartender::EncoderUpdate(){
     /* READ ENCODER ROTATION AND SAVE VOLUME */
-    // myEncoder.Update(&volume);
+    myEncoder.Update(&volume);
 
     /* READ ENCODER BUTTON */
     switch(myEncoder.Pressed()){
         /* ENCODER PRESSED */
         case PRESS:{
-        if(volume<=0)
-            return;
+            if(volume<=0)
+                break;
 
-        switch (myDisplay.page){
-            case PAGE::AUTO:
-            ServeDrinks();
-            // EEPROM_Save(EEPROM_VOLUME);
+            /* Start serving */
+            SetState(serving);
             break;
-            case PAGE::CALIBRATE_START:
-            case PAGE::CALIBRATE_STOP:
-            Calibrate();
-            break;
-        }
-        break;
         }
         /* ENCODER HOLD */
         case HOLD:{
-        /* RESET ENCODER VALUE TO 1 */
-        myEncoder.SetVolume(1);
-        /* CHANGE CURRENT PAGE */
-        myDisplay.SwitchPage();
-        break;
+            /* Start serving */
+            SetState(calibration);
+
+            /* RESET ENCODER VALUE TO 1 */
+            // myEncoder.SetVolume(1);
+            /* CHANGE CURRENT PAGE */
+            // myDisplay.SwitchPage();
+            break;
         }
         /* ENCODER RELEASED */
         default:
         case RELEASED:
-        break;
+            break;
     }
 }
 
 void Bartender::Test(){
     for(unsigned int i = 0; i < glasses; i++){
+        led->ResetAll();
+
         // OLED TEST
         myDisplay.Clear();
-        myDisplay.PrintSmallText("SMALL",0);
-        myDisplay.PrintSmallText("TEXT",2);
-        delay(500);
-
-        myDisplay.Clear();
-        myDisplay.PrintText("BIG TEXT",0);
+        myDisplay.PrintSmallText("GLASS",0);
+        myDisplay.PrintText(String(glasses),0);
         delay(500);
 
         // SERVO TEST
         myServo->MoveTo(i);
         delay(500);
 
+        // PUMP TEST
+        #include "MyPump.h"
+        MyPump TEST_PUMP;
+        TEST_PUMP.Start(100);
+
         // SCALE TEST
+        myGlasses[i]->Check(0);
+        myGlasses[i]->Check(100);
         myGlasses[i]->GetVolume();
         // myGlasses[i]->beam->Measure();
         delay(500);
@@ -149,10 +151,5 @@ void Bartender::Test(){
         delay(500);
     }
 
-    // PUMP TEST
-    #include "MyPump.h"
-    MyPump TEST_PUMP;
-    TEST_PUMP.Start();
-    delay(500);
-    TEST_PUMP.Stop();
+
 }

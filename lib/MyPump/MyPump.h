@@ -15,6 +15,7 @@ public:
      * @brief Start water pump to pour drink
      */
     void Start();
+    void Start(unsigned int time);
 
     /**
      * @brief Stop water pump

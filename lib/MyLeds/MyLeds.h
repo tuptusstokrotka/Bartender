@@ -7,7 +7,6 @@
 #include "globals.h"
 
 #define LEDS_PIN 4
-#define NUMPIXELS GLASSES
 #define LEDS_TYPE (NEO_GRB + NEO_KHZ800)
 
 enum COLOR {
@@ -24,8 +23,10 @@ enum COLOR {
 };
 
 class MyLeds : public Adafruit_NeoPixel{
+private:
+    unsigned int pixels;
 public:
-    MyLeds();
+    MyLeds(unsigned int pixels);
     ~MyLeds();
 
     void ResetAll(void);

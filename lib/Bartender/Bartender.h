@@ -6,11 +6,12 @@
 #include "EEPROM.h"
 #include "eeprom_address.h"
 
-#include "MyGlass.h"
 #include "MyLeds.h"
+#include "MyServo.h"
+#include "MyGlass.h"
 #include "MyOled.h"
 #include "MyEncoder.h"
-#include "MyServo.h"
+#include "MyPump.h"
 
 enum BartenderState{
     idle,
@@ -24,11 +25,15 @@ private:
     unsigned int volume     = 0;
     unsigned int glasses    = 0;
 
+    // Dynamically allocated based on the # glasses
+    MyLeds *led         = nullptr;
+    MyServo *myServo    = nullptr;
     MyGlass **myGlasses = nullptr;
-    MyLeds *led;
+
+    // Static independent on glasses
     MyOled myDisplay;
     MyEncoder myEncoder;
-    MyServo *myServo;
+    MyPump myPump;
 
     /**
      * @brief Check each glass strain gauge reading.

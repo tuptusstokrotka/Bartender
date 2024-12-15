@@ -1,11 +1,10 @@
 #include "MyGlass.h"
 
-MyGlass::MyGlass(const GlassConfig* config, MyLeds* led, unsigned int index){
-    this->pin = config->pin; //DELETE - this does not apply to the straingauge
+MyGlass::MyGlass(const GlassConfig* config, MyPump* myPump, MyLeds* led, unsigned int index){
     this->glass_index = index;
+    this->myPump = myPump;
     this->led = led;
 
-    pinMode(pin, INPUT_PULLUP); //DELETE - this does not apply to the straingauge
     beam = new MyWeight(config->dout, config->sck);
 }
 
@@ -31,41 +30,40 @@ void MyGlass::Fill(unsigned int volume){
                 filled_ml = beam->Measure();            // Measure glass weight
                 /* LED - Gradient in range 0-100% */
                 led->SetGlassPercent(glass_index, int(float(filled_ml / volume) * 100) );
-                myPump.Start();                         // Start pouring
+                myPump->Start();                        // Start pouring
             }
 
-            myPump.Stop();                              // Stop pouring
+            myPump->Stop();                             // Stop pouring
             break;
         }
     }
 }
 
 void MyGlass::Check(unsigned int volume){
-    bool state = digitalRead(MyGlass::pin);             // Check if glass still on the button
-
     //CHECK If this is not colliding with tare
     int current_weight = beam->Measure();               // Measure glass weight
     Serial.print(String(glass_index)); //TODO
     (current_weight < 1234) ? Serial.println(": NO_GLASS") : Serial.println(": GLASS");
 
-    /* NO GLASS ON THE BUTTON */
-    if(state == HIGH){
-        filled_ml = 0;                                  // CLEAR POURED VOLUME
-        status = GlassState::No_Glass;                  // NO glass
-        led->ResetGlass(glass_index);                   // LED - BLACK
-    }
-    /* GLASS ON THE BUTTON */
-    if(filled_ml == 0){                                 // HAS NOT BEEN FILLED
-        status = GlassState::Empty;                     // NEW glass = No LIQUID
-        beam->Zero();                                   // Offset glass weight
-        led->SetGlass(glass_index, _white);             // LED - WHITE
-    }
-    else if(filled_ml < volume){                        // FILLED LESS THAN CURRENT VOLUME
-        status = GlassState::Half;                      // OLD glass half full
-    }
-    else{                                               // GLASS FULL OR HAVE MORE THAN CURRENT VOLUME
-        status = GlassState::Filled;                    // OLD glass full
-    }
+    //TODO update to match strain gauge
+    // /* NO GLASS ON THE BUTTON */
+    // if(state == HIGH){
+    //     filled_ml = 0;                                  // CLEAR POURED VOLUME
+    //     status = GlassState::No_Glass;                  // NO glass
+    //     led->ResetGlass(glass_index);                   // LED - BLACK
+    // }
+    // /* GLASS ON THE BUTTON */
+    // if(filled_ml == 0){                                 // HAS NOT BEEN FILLED
+    //     status = GlassState::Empty;                     // NEW glass = No LIQUID
+    //     beam->Zero();                                   // Offset glass weight
+    //     led->SetGlass(glass_index, _white);             // LED - WHITE
+    // }
+    // else if(filled_ml < volume){                        // FILLED LESS THAN CURRENT VOLUME
+    //     status = GlassState::Half;                      // OLD glass half full
+    // }
+    // else{                                               // GLASS FULL OR HAVE MORE THAN CURRENT VOLUME
+    //     status = GlassState::Filled;                    // OLD glass full
+    // }
 }
 
 void MyGlass::Calibrate(void){

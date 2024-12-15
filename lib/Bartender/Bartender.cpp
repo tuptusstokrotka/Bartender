@@ -5,16 +5,16 @@ Bartender::Bartender(unsigned int glasses, const GlassConfig* config){
     this->volume = EEPROM.read(EEPROM_VOLUME);
 
     // LED Strip init
-    led = new MyLeds();
+    led = new MyLeds(glasses);
+    // SERVO INIT AND SET
+    myServo = new MyServo(glasses, config);
 
     // Allocate an array of pointers to MyGlass
     myGlasses = new MyGlass*[glasses];
     for(unsigned int i = 0; i < glasses; i++){
-        myGlasses[i] = new MyGlass(config, led, i);
+        myGlasses[i] = new MyGlass(config, &myPump, led, i);
     }
 
-    // SERVO INIT AND SET
-    myServo = new MyServo(glasses, config);
     // DISPLAY INIT AND SPLASH
     myDisplay.Init();
 }
@@ -25,6 +25,8 @@ Bartender::~Bartender(){
         delete myGlasses[i];
     }
     delete[] myGlasses;
+    delete led;
+    delete myServo;
 }
 
 BartenderState Bartender::GetState(){ return this->status; }
@@ -129,9 +131,7 @@ void Bartender::Test(){
         delay(500);
 
         // PUMP TEST
-        #include "MyPump.h"
-        MyPump TEST_PUMP;
-        TEST_PUMP.Start(100);
+        myPump.Start(100);
 
         // SCALE TEST
         myGlasses[i]->Check(0);
@@ -150,6 +150,4 @@ void Bartender::Test(){
         }
         delay(500);
     }
-
-
 }

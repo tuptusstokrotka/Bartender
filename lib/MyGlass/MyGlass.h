@@ -7,11 +7,6 @@
 #include "MyLeds.h"
 #include "MyPump.h"
 
-#define FILLED      3
-#define HALF        2
-#define EMPTY       1
-#define NO_GLASS    0
-
 enum GlassState{
     No_Glass,
     Empty,
@@ -21,15 +16,12 @@ enum GlassState{
 
 class MyGlass{
 private:
-    //DELETE the pin - deprecated
-    unsigned int pin;               // ARDUINO PIN ASSIGNED TO THE SWITCH
-    unsigned int glass_index;       // Glass index for the aRGB led
-
     MyWeight* beam = nullptr;       // Strain Gauge beam pointer
     MyLeds* led = nullptr;          // Led pointer
-    MyPump myPump;                  // Pump instance
+    MyPump* myPump = nullptr;       // Pump instance
 
     GlassState status = No_Glass;   // Glass status
+    unsigned int glass_index;       // Glass index for the aRGB led
     unsigned int filled_ml = 0;     // Glass poured mililiters
 
     /**
@@ -41,7 +33,7 @@ private:
     unsigned int Difference(unsigned int volume);     // Count the remaining volume to pour
 
 public:
-    MyGlass(const GlassConfig* config, MyLeds* led, unsigned int index);
+    MyGlass(const GlassConfig* config, MyPump* myPump, MyLeds* led, unsigned int index);
     ~MyGlass();
 
     /**

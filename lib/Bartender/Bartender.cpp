@@ -19,6 +19,7 @@ Bartender::Bartender(unsigned int glasses, GlassConfig* config){
 
     // DISPLAY INIT AND SPLASH
     // myDisplay->Init();
+    DrawBegin();
 }
 
 Bartender::~Bartender(){
@@ -42,6 +43,7 @@ void Bartender::SetVolume(unsigned int volume){ this->volume = volume; }
 
 
 void Bartender::Update(){
+    DrawLine();
     EncoderUpdate();
     // DisplayUpdate();
 

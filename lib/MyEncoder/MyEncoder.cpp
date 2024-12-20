@@ -1,75 +1,77 @@
 #include "MyEncoder.h"
 
-MyEncoder::MyEncoder(unsigned int pin1, unsigned int pin2) : Encoder(pin1, pin2) {
-    pinMode(PIN_SW, INPUT_PULLUP);
+//FIXME
+// MyEncoder::MyEncoder(unsigned int pinA, unsigned int pinB) : MyButton(PIN_SW), Encoder(pinA, pinB) {
+
+MyEncoder::MyEncoder(unsigned int pinA, unsigned int pinB) : MyButton(PIN_SW, 1000){
+    this->pinA = pinA;
+    this->pinB = pinB;
+
+    pinMode(pinA, INPUT_PULLUP);  // Set pinA (A) as input with internal pull-up
+    pinMode(pinB, INPUT_PULLUP);  // Set pinB (B) as input with internal pull-up
 }
 
 MyEncoder::~MyEncoder() {}
 
-unsigned int MyEncoder::Pressed(){
+void MyEncoder::Update(int *value){
+    #ifdef Encoder_h_
+        UpdateISR(value);
+        return;
+    #endif
 
-    /* BUTTON RELEASED */
-    if(digitalRead(PIN_SW) == HIGH){                    // BUTTON RELEASED
-        last_State = HIGH;                              // UPDATE LASTSTATE
-        return RELEASED;
+    // Read the current state of the encoder pins
+    uint8_t encA = digitalRead(pinA);
+    uint8_t encB = digitalRead(pinB);
+
+    // Combine the states into a single byte
+    unsigned int enc = (encA | (encB << 1));
+
+    // Determine the direction using state transitions
+    switch ((last_Position << 2) | enc) {  // Encode previous and current states into 4 bits
+        case 0b0001:  // Transition: 00 -> 01
+        case 0b0111:  // Transition: 01 -> 11
+        case 0b1110:  // Transition: 11 -> 10
+        case 0b1000:  // Transition: 10 -> 00
+            (*value)+=1;    // Right rotation
+        break;
+
+        case 0b0010:  // Transition: 00 -> 10
+        case 0b1011:  // Transition: 10 -> 11
+        case 0b1101:  // Transition: 11 -> 01
+        case 0b0100:  // Transition: 01 -> 00
+            (*value)-=1;  // Left rotation
+        break;
+
+        default:
+        // Ignore invalid or no-change transitions
+        break;
     }
-
-    /* BUTTON PRESSED && LASTSTATE PRESSED */
-    if(last_State == LOW){                              // BUTTON HAS NOT BEEN RELEASED YET
-        return -1;                                      // SKIP ITERATION
-    }
-
-    /* BUTTON PRESSED && LASTSTATE RELEASED */
-    last_State = LOW;                                   // BUTTON JUST PRESSED AND HAS BEEN RELEASED
-
-    /* BUTTON HOLD */
-    unsigned long holding_Time = millis();              // COUNT HOLDING TIME
-    while(digitalRead(PIN_SW) != HIGH){                 // WAIT UNTIL RELEASED
-        if(millis() - holding_Time > HOLD_MS)           // BREAK AFTER 400ms
-            return HOLD;                                // HOLDING A BUTTON C:
-    }
-    /* BUTTON PRESS */
-    return PRESS;                                       // JUST A PRESS :C
+    // Update the last encoder state
+    last_Position = enc;
 }
 
-unsigned int MyEncoder::Update(unsigned int *volume){
-    unsigned int last_vol = *volume; //DEBUG
+void MyEncoder::UpdateISR(int *value){
+    #ifdef Encoder_h_
+        if (millis() - last_tick < DEBOUNCE)
+            return;
 
-    if (millis() - last_Tick > DEBOUNCE) {
         /* GET ENCODER READINGS */
         int current_position = read();
         int increment = (current_position - last_Position);
+        Serial.println("Pos: "+String(current_position) + " - Inc: "+String(increment));
 
         /* CHANGE NOT TRIGGERED */
         if(abs(increment) < RESOLUTION)
-            return *volume;
+            return;
 
         /* BASED ON THE ENCODER DIRECTION ADD-or-SUBTRACT */
-        (increment > 0) ? (*volume + 1) : (*volume - 1);
+        (increment > 0) ? (*value += 1) : (*value -= 1);
 
-        /* LIMIT VOLUME IN RANGE [0, 100] */
-        *volume = (unsigned int)constrain(*volume, 0, 100);
+        /* LIMIT VALUE IN RANGE [0, 100] */
+        *value = (int)constrain(*value, 0, 100);
 
         /* UPDATE LAST VALUES */
         last_Position = current_position;
-        last_Tick = millis();
-    }
-
-    if(last_vol != *volume)            //DEBUG
-        Serial.print("volume: ");      //DEBUG
-        Serial.println(*volume);       //DEBUG
-
-    return *volume;
-
-    // if (millis() - last_Tick > DEBOUNCE) {
-    //     long newPosition = read() / 4;                  // cut int32 into 4 xD
-    //     *volume = (unsigned int)constrain(newPosition, 0, 100);        // Ograniczenie volume do maksymalnie 100 ml
-    //     last_Tick = millis();                            // Get last encoder tick
-    // }
-    // return *volume;
-}
-
-//DELETE
-void MyEncoder::SetVolume(unsigned int volume){
-    MyEncoder::volume = volume;
+        last_tick = millis();
+    #endif
 }

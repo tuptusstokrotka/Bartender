@@ -1,4 +1,5 @@
 #include "MyGlass.h"
+#define GLAS_DEV     if(glass_index == 2){ Serial.println("TOTAL: "+String(reading)+" - GLASS: "+String(glass_weight)+" - FILLED: "+String(filled_ml)+"/"+String(volume));}
 
 MyGlass::MyGlass(const GlassConfig* config, MyPump* myPump, MyLeds* led, unsigned int index){
     this->glass_index = index;
@@ -10,64 +11,94 @@ MyGlass::MyGlass(const GlassConfig* config, MyPump* myPump, MyLeds* led, unsigne
 
 MyGlass::~MyGlass(){}
 
-unsigned int MyGlass::Difference(unsigned int volume){
-    if(volume < filled_ml)                              // JUST IN CASE...
-        return 0;
-    return (volume - filled_ml);
+void MyGlass::SetState(GlassState state){ status = state; }
+GlassState MyGlass::GetState(void){ return status; }
+
+void MyGlass::SetGlassWeight(unsigned int grams){ glass_weight = grams; }
+unsigned int MyGlass::GetGlassWeight(void){ return glass_weight; }
+
+unsigned int MyGlass::GetFilled(void){
+    return filled_ml;
+}
+unsigned int MyGlass::GetDifference(unsigned int volume){
+    return (volume < filled_ml) ? 0 : (volume - filled_ml);
+}
+
+
+void MyGlass::Calibrate(void){
+    led->SetGlass(glass_index, _yellow);
+    beam->Calibrate();
+    led->SetGlass(glass_index, _black);
 }
 
 void MyGlass::Fill(unsigned int volume){
-    switch (status){
-        default:
-        case No_Glass:
-        case Filled:{
-            return;
-        }
-        case Empty:
-        case Half:{
-            //TODO tare glass weight, offset this value in get_value()
-            while(filled_ml < volume){                  // Excpected volume is reached
-                filled_ml = beam->Measure();            // Measure glass weight
-                /* LED - Gradient in range 0-100% */
-                led->SetGlassPercent(glass_index, int(float(filled_ml / volume) * 100) );
-                myPump->Start();                        // Start pouring
-            }
+    /* Refresh glass reading */
+    int reading = beam->Measure(1);
+    reading <= 0 ? filled_ml = 0 : filled_ml = reading - glass_weight;
 
-            myPump->Stop();                             // Stop pouring
-            break;
-        }
+    GLAS_DEV//DEBUG
+
+    /* Glass removed */
+    if(reading <= 0){
+        SetState(Empty);
+        filled_ml = 0;
+        // myPump->Stop();
+        return;
     }
+
+    /* Set LED according to the volume - Gradient in range 0-100% */
+    led->SetGlassPercent(glass_index, int((float)filled_ml / (float)volume * 100) );
+
+    /* Glass full - Stop pouring */
+    if(filled_ml >= volume - STOP_ML_OFFSET){
+        SetState(Filled);
+        // myPump->Stop();
+        // Serial.println("-Pump Stop");
+        return;
+    }
+
+    /* Start pouring */
+    // myPump->Start();
+    // Serial.println("-Pump Start");
 }
 
 void MyGlass::Check(unsigned int volume){
-    //CHECK If this is not colliding with tare
-    int current_weight = beam->Measure();               // Measure glass weight
-    Serial.print(String(glass_index)); //TODO
-    (current_weight < 1234) ? Serial.println(": NO_GLASS") : Serial.println(": GLASS");
+    int reading = beam->Measure(2);                     // Measure total weight
+    GLAS_DEV//DEBUG
 
-    //TODO update to match strain gauge
-    // /* NO GLASS ON THE BUTTON */
-    // if(state == HIGH){
-    //     filled_ml = 0;                                  // CLEAR POURED VOLUME
-    //     status = GlassState::No_Glass;                  // NO glass
-    //     led->ResetGlass(glass_index);                   // LED - BLACK
-    // }
-    // /* GLASS ON THE BUTTON */
-    // if(filled_ml == 0){                                 // HAS NOT BEEN FILLED
-    //     status = GlassState::Empty;                     // NEW glass = No LIQUID
-    //     beam->Zero();                                   // Offset glass weight
-    //     led->SetGlass(glass_index, _white);             // LED - WHITE
-    // }
-    // else if(filled_ml < volume){                        // FILLED LESS THAN CURRENT VOLUME
-    //     status = GlassState::Half;                      // OLD glass half full
-    // }
-    // else{                                               // GLASS FULL OR HAVE MORE THAN CURRENT VOLUME
-    //     status = GlassState::Filled;                    // OLD glass full
-    // }
+    /* No glass */
+    if(reading < GLASS_THRESHOLD){
+        led->SetGlass(glass_index, _black);             // Reset glass led
+        SetGlassWeight(0);                              // Reset glass weight
+        SetState(GlassState::No_Glass);                 // Reset glass state
+        filled_ml = 0;
+        return;
+    }
+
+    /* Glass on the strain gauge */
+    /* New Glass and weight not set */
+    if(GetGlassWeight() == 0){
+        led->SetGlass(glass_index, _white);             // Set glass led
+        SetGlassWeight(reading);                        // Set glass weight
+        SetState(GlassState::Empty);                    // Set glass state
+        return;
+    }
+
+    /* Does not apply to new glass */
+    if(filled_ml == 0)
+        return;
+
+    /* Glass half full */
+    if(GetDifference(volume) > 0){
+        led->SetGlass(glass_index, _orange);            // Set glass led
+        SetState(GlassState::Half);                     // Set glass state
+        return;
+    }
+    /* Glass full */
+    led->SetGlass(glass_index, _green);                 // Set glass led
+    SetState(GlassState::Filled);                       // Set glass state
 }
 
-void MyGlass::Calibrate(void){
-    beam->Calibrate();
-}
+//void weight_to_status(int volume, int filled, glass wieght){
 
-unsigned int MyGlass::GetVolume(void){ return filled_ml; }
+//void Check == set led based on the status

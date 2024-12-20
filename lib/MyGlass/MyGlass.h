@@ -7,6 +7,8 @@
 #include "MyLeds.h"
 #include "MyPump.h"
 
+#define STOP_ML_OFFSET 0
+
 enum GlassState{
     No_Glass,
     Empty,
@@ -22,19 +24,28 @@ private:
 
     GlassState status = No_Glass;   // Glass status
     unsigned int glass_index;       // Glass index for the aRGB led
+    unsigned int glass_weight = 0;
     unsigned int filled_ml = 0;     // Glass poured mililiters
 
+    void SetState(GlassState state);
+    void SetGlassWeight(unsigned int grams);
+
+    unsigned int GetGlassWeight(void);
     /**
      * @brief Find difference between desired volume of drink and volume in glass
      *
      * @param volume Current volume desired to pour in milliliters
      * @return volume - filled_ml in milliliters
      */
-    unsigned int Difference(unsigned int volume);     // Count the remaining volume to pour
-
+    unsigned int GetDifference(unsigned int volume);
 public:
     MyGlass(const GlassConfig* config, MyPump* myPump, MyLeds* led, unsigned int index);
     ~MyGlass();
+
+    unsigned int GetFilled(void);
+    GlassState GetState(void);
+
+    void Calibrate(void);
 
     /**
      * @brief Update glass volume poured. Used to verify glass status
@@ -52,10 +63,6 @@ public:
      * @return + NO_GLASS (0)
      */
     void Check(unsigned int volume);
-
-    void Calibrate(void);
-
-    unsigned int GetVolume(void);
 };
 
 #endif

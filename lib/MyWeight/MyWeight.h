@@ -19,17 +19,13 @@ private:
     float converted   = 0;      // ADC converted by scale factor
     long  offset      = 0;      // Offset when tare
 
-    void Showcase();
-
 public:
     MyWeight(unsigned int dout, unsigned int sck);
     ~MyWeight();
 
-    void Init();
-
     void Calibrate();
 
-    int Measure();
+    int Measure(unsigned int samples = 1);
 
     void Zero();
 };

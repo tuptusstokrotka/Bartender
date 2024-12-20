@@ -4,7 +4,7 @@
 
 #include "Arduino.h"
 
-#define DCMOTOR_PIN_COIL1 5
+#define DCMOTOR_PIN_COIL1 1 // D1
 
 class MyPump{
 public:

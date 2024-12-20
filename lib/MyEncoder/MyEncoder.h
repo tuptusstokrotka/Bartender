@@ -2,12 +2,14 @@
 #define MYENCODER_H
 #pragma once
 
-#include <Encoder.h>
+// #include <Encoder.h>
+#include <Arduino.h>
+#include "MyButton.h"
 
 // pin setup
-#define PIN_CLK     2
-#define PIN_DT      3
-#define PIN_SW      A1
+#define PIN_CLK     A2
+#define PIN_DT      A3
+#define PIN_SW      A6
 
 // Encoder naciśnij / przytrzymaj definicje
 #define HOLD_MS     400
@@ -15,41 +17,37 @@
 #define PRESS       1
 #define RELEASED    0
 
-#define DEBOUNCE    50  // Debouncing 50ms
-#define RESOLUTION  4   // How many values is one tick (rotation)
+#define DEBOUNCE    50                  // Debouncing 50ms
+#define RESOLUTION  4                   // How many values is one tick (rotation)
 
-
-class MyEncoder : public Encoder {
+//FIXME
+// class MyEncoder : public MyButton, Encoder{
+class MyEncoder : public MyButton{
 private:
-    int last_Position = 0;              // Last encoder reading value
-    unsigned long last_Tick = 0;        // Last encoder revolution ms
-    bool last_State = LOW;              // Last Encoder Switch state
-    unsigned int volume = 0;            // Drink volume to pour
+    unsigned int pinA;                  // Encoder pin A
+    unsigned int pinB;                  // Encoder pin B
+
+    // Encoder knob
+    int last_Position       = 0;        // Last encoder reading value
+    unsigned long last_tick = 0;        // Last encoder revolution
+    // Encoder button
+    unsigned long last_press_tick = 0;
+    int last_State = LOW;               // Last Encoder Switch state
 
 public:
-    MyEncoder(unsigned int pin1 = PIN_CLK, unsigned int pin2 = PIN_DT);
+    MyEncoder(unsigned int pinA = PIN_CLK, unsigned int pinB = PIN_DT);
     ~MyEncoder();
 
     /**
-     * @brief Check if encoder button is pressed, holding or released
-     * @return + HOLD (2)
-     * @return + PRESS (1)
-     * @return + RELEASE (0)
+     * @brief Read Encoder and update value
+     * @note This will have poor performance over ISR
      */
-    unsigned int Pressed();
+    void Update(int *value);
 
     /**
-     * @brief Update Encoder while rotating
-     * Get volume counter value
-     * @return Current volume desired to pour in milliliters
+     * @brief Read Encoder and update value using INTERRUPTS
      */
-    unsigned int Update(unsigned int *volume);
-
-    /**
-     * @brief Set volume to pour
-     * @param volume in milliliters
-     */
-    void SetVolume(unsigned int volume);
+    void UpdateISR(int *value);
 };
 
 #endif

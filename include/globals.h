@@ -3,6 +3,6 @@
 
 #pragma once
 
-#define GLASSES 7
+#define GLASSES 6
 
 #endif

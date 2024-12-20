@@ -1,20 +1,8 @@
 #include "MyLeds.h"
 
-MyLeds::MyLeds(unsigned int pixels){
-    #if 0
-        Adafruit_NeoPixel(NUMPIXELS, LEDS_PIN, LEDS_TYPE);
-    #else
-        //this should work as a constructor //CHECK
-        this->pixels = pixels;
-        updateType(LEDS_TYPE);
-        updateLength(pixels);
-        setPin(LEDS_PIN);
-    #endif
-
-    // for(int i=0; i<NUMPIXELS; i++){
-    //     setPixelColor(i, _white);
-    // }
-    // show();
+MyLeds::MyLeds(unsigned int pixels) : Adafruit_NeoPixel(pixels, LEDS_PIN, LEDS_TYPE) {
+    begin();            // Initialize the NeoPixel library
+    setBrightness(25); // Set maximum brightness
 }
 
 MyLeds::~MyLeds(){}
@@ -29,7 +17,7 @@ void MyLeds::ResetGlass(unsigned int num){
     show();
 }
 
-void MyLeds::SetGlass(unsigned int num, unsigned int color){
+void MyLeds::SetGlass(unsigned int num, uint32_t color){
     setPixelColor(num, color);
     show();
 }

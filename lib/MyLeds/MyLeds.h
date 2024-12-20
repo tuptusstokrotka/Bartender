@@ -4,22 +4,23 @@
 
 #include "Arduino.h"
 #include "Adafruit_NeoPixel.h"
-#include "globals.h"
 
-#define LEDS_PIN 4
+#define LEDS_PIN A1
 #define LEDS_TYPE (NEO_GRB + NEO_KHZ800)
 
 enum COLOR {
-    // uint32_t = WHITE, RED, GREEN, BLUE
-    _black   = 0x0000, // Clear led
-    _red     = 0x0f00, // Only the red component is fully on
-    _green   = 0x00f0, // Only the green component is fully on
-    _blue    = 0x000f, // Only the blue component is fully on
-    _yellow  = 0x0ff0, // Combination of red and green
-    _cyan    = 0x00ff, // Combination of green and blue
-    _magenta = 0x0f0f, // Combination of red and blue
-    _orange  = 0x0f70, // Combination of red and a bit of green
-    _white   = 0x0fff, // Combination of red, green, and blue
+    _white   = ((uint32_t)0xff << 16) | ((uint32_t)0xff << 8) | 0xff,
+    _black   = ((uint32_t)0x00 << 16) | ((uint32_t)0x00 << 8) | 0x00,
+
+    _red     = ((uint32_t)0xff << 16) | ((uint32_t)0x00 << 8) | 0x00, // Full red
+    _green   = ((uint32_t)0x00 << 16) | ((uint32_t)0xff << 8) | 0x00, // Full green
+    _blue    = ((uint32_t)0x00 << 16) | ((uint32_t)0x00 << 8) | 0xff, // Full blue
+
+    _yellow  = ((uint32_t)0xff << 16) | ((uint32_t)0xff << 8) | 0x00, // Red + Green
+    _cyan    = ((uint32_t)0x00 << 16) | ((uint32_t)0xff << 8) | 0xff, // Green + Blue
+    _magenta = ((uint32_t)0xff << 16) | ((uint32_t)0x00 << 8) | 0xff, // Red + Blue
+
+    _orange  = ((uint32_t)0xff << 16) | ((uint32_t)0x78 << 8) | 0x00, // Orange
 };
 
 class MyLeds : public Adafruit_NeoPixel{
@@ -33,7 +34,7 @@ public:
 
     void ResetGlass(unsigned int num);
 
-    void SetGlass(unsigned int num, unsigned int color);
+    void SetGlass(unsigned int num, uint32_t color);
 
     void SetGlassPercent(unsigned int num, unsigned int percent);
 };

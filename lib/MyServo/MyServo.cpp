@@ -1,6 +1,6 @@
 #include "MyServo.h"
 
-MyServo::MyServo(unsigned int glasses, const GlassConfig* config) : Servo () {
+MyServo::MyServo(unsigned int glasses, GlassConfig* config) : Servo () {
     pinMode(SERVO_PIN_SIG, OUTPUT);
 
     attach(SERVO_PIN_SIG);                      // LET IT MOVE
@@ -14,18 +14,8 @@ MyServo::MyServo(unsigned int glasses, const GlassConfig* config) : Servo () {
     angles = new float[glasses];
 
     for (unsigned int i = 0; i < glasses; i++) {
-        angles[i] = i;                  //THIS WORKS
-        // angles[i] = config->angle[i];   //THIS FAILED
-        *angles = config->angle;        //THIS WORKS
+        angles[i] = (config + sizeof(*config)/sizeof(GlassConfig) * i)->angle;
     }
-
-    //DEBUG
-    for (unsigned int i = 0; i < glasses; i++) {
-        Serial.print(angles[i]);
-        Serial.print(" ");
-    }
-    Serial.println(" ");
-    Serial.println(" ");
 }
 
 MyServo::~MyServo(){}
@@ -35,7 +25,7 @@ void MyServo::MoveTo(unsigned int glass){
 
     write(angles[glass] + OFFSET);              // Set glass position
 
-    // while (read() != (angles[glass] + OFFSET)){;}
+    // while (read() != (angles[glass] + OFFSET)){;} //CHECK if this is better
     delay(MAX_MOVE_TIME);                       // LITTLE DELAY TO SET SERVO
 
     detach();                                   // STOP JITTERING

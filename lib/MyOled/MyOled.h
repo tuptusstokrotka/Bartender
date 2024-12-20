@@ -6,13 +6,13 @@
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_GFX.h>
 
+
 #define SCREEN_WIDTH 		128
 #define SCREEN_HEIGHT 		64
 #define OLED_RESET 			A0
 #define OLED_I2C_ADDRESS 	0x3C
 
 // #define ML_PER_SECOND 		(44.5 / 5.0)	// THIS HAS TO BE IN BRACES!
-#include "globals.h"
 
 #define SSD1306_NO_SPLASH	// THIS IS NOT WORKING, has to change inside display class - f*ck it
 
@@ -93,6 +93,11 @@ const uint8_t PROGMEM splash[] = {
 class MyOled : private Adafruit_SSD1306 {
 private:
 public:
+	PAGE page = AUTO;
+
+    MyOled();
+    ~MyOled();
+
 	/**
 	 * @brief Helper function. Based on the string length draws string centered on a screen.
 	 * @note Overflow possible
@@ -107,10 +112,16 @@ public:
 	 * @param offset Vertical offset to move string UP
 	 */
 	void PrintSmallText(String text, uint8_t y_pos);
-	PAGE page = AUTO;
 
-    MyOled();
-    ~MyOled();
+	/**
+     * @brief Clears display
+     */
+    void Clear();
+
+	/**
+     * @brief Display buffer on display
+     */
+    void Display();
 
 	/**
 	 * @brief Initialize SSD1306. Set text size and color.
@@ -129,15 +140,7 @@ public:
 	 * @param volume Current volume desired to pour in milliliters
 	 */
     void Volume(uint8_t volume);
-	/**
-	 * @brief Draw a number + ml/s on a screen
-	 * @note Displays OLED
-	 * @param volume Current flowrate desired to pour in milliliters per second
-	 */
-    void Flow(uint8_t volume);
 
-	void Seconds(uint8_t volume);
-	// Drawing Pouring progress bar
 	/**
 	 * @brief Draw a frame and progress bar of pouring process
 	 * @param percentage Pouring process completion %
@@ -167,17 +170,7 @@ public:
 	 *
 	 * @note Displays OLED
 	 */
-    void Pouring(unsigned long start_time, uint8_t volume);
-
-    /**
-     * @brief Clears display
-     */
-    void Clear();
-
-	/**
-     * @brief Display buffer on display
-     */
-    void Display();
+    void Pouring(unsigned int glass, unsigned int volume);
 
 	void SwitchPage();
 };

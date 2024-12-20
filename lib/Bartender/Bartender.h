@@ -22,7 +22,7 @@ enum BartenderState{
 class Bartender{
 private:
     BartenderState status   = idle;
-    unsigned int volume     = 0;
+    int volume              = 0;
     unsigned int glasses    = 0;
 
     // Dynamically allocated based on the # glasses
@@ -31,7 +31,7 @@ private:
     MyGlass **myGlasses = nullptr;
 
     // Static independent on glasses
-    MyOled myDisplay;
+    // MyOled myDisplay;
     MyEncoder myEncoder;
     MyPump myPump;
 
@@ -41,7 +41,7 @@ private:
      * @note Status includes selected volume,
      * it marks glass as full or half (with liquid but not full)
      */
-    void GlassesUpdate(void);
+    void GlassCheck(void);
     /**
      * @brief Update currently displayed data on the OLED
      */
@@ -62,18 +62,15 @@ private:
     void SetState(BartenderState status);
 
 public:
-    Bartender(unsigned int glasses, const GlassConfig* config);
+    Bartender(unsigned int glasses, GlassConfig* config);
     ~Bartender();
 
     unsigned int GetVolume();
     void SetVolume(unsigned int volume);
 
+    void Update();
     void Calibrate();
     void ServeDrinks();
-
-    void Update();
-
-    void Test();
 };
 
 #endif

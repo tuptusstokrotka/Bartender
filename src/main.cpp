@@ -2,30 +2,27 @@
 #include "GlassConfig.h"
 #include "Bartender.h"
 
+// Order based on the location of the strain gauge on the PCB
 GlassConfig GLASS_PINS[GLASSES] = {
-  {1, 2, 0},
-  {1, 2, 30},
-  {1, 2, 60},
-  {1, 2, 90},
-  {1, 2, 120},
-  {1, 2, 150}
+  {8,  9,  4},    // KZ4
+  {11, 10, 38},   // KZ5
+  {5,  4,  76},   // KZ2
+  {2,  3,  114},  // KZ1
+  {12, 13, 148},  // KZ6
+  {7,  6,  212},  // KZ3
 };
 
-Bartender ShotDoser(GLASSES, GLASS_PINS);
+Bartender* ShotDoser;
 
 void setup() {
   /* SERIAL COM INIT */
   Serial.begin(115200);
-  // /* Get data from EEPROM */
-  // unsigned int volume = EEPROM_Get();
-  // /* Set init volume */
-  // ShotDoser.SetVolume(volume);
+  Serial.println("hello world");
+
+  ShotDoser = new Bartender(GLASSES, GLASS_PINS);
 }
 
 void loop() {
   /* Update bartender */
-  ShotDoser.Update();
-  // delay(10);
-
-  ShotDoser.Test();
+  ShotDoser->Update();
 }

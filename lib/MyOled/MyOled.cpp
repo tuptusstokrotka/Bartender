@@ -5,6 +5,10 @@
 // U8G2_SSD1306_128X32_UNIVISION_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);   // Adafruit ESP8266/32u4/ARM Boards + FeatherWing OLED
 U8G2_SSD1306_128X32_UNIVISION_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ SCL, /* data=*/ SDA);   // pin remapping with ESP8266 HW I2C
 
+// U8X8_SSD1306_128X32_UNIVISION_SW_I2C u8x8(/* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ U8X8_PIN_NONE);   // Adafruit Feather ESP8266/32u4 Boards + FeatherWing OLED
+// U8X8_SSD1306_128X32_UNIVISION_SW_I2C u8x8(/* clock=*/ 21, /* data=*/ 20, /* reset=*/ U8X8_PIN_NONE);   // Adafruit Feather M0 Basic Proto + FeatherWing OLED
+U8X8_SSD1306_128X32_UNIVISION_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);   // Adafruit ESP8266/32u4/ARM Boards + FeatherWing OLED
+
 #ifdef U8X8_HAVE_HW_SPI
 // #include <SPI.h>
 #endif
@@ -13,19 +17,63 @@ U8G2_SSD1306_128X32_UNIVISION_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, 
 #endif
 
 
-void DrawLine(){
-    delay(1000);
-    u8g2.drawHLine(0,0,10);
-    delay(1000);
-    u8g2.drawHLine(0,31,10);
-}
-
 void DrawBegin(){
     u8g2.begin();
     u8g2.firstPage();
     u8g2.setFont(u8g2_font_ncenB10_tr);
     u8g2.drawStr(0,20,"Hello World!");
 }
+
+
+void DrawText(char* string){
+    u8g2.clear();
+    u8g2.clearDisplay();
+
+    u8g2.setFont(u8g2_font_ncenB24_tr);
+    u8g2.drawStr(0, 0, string);
+}
+void DrawSmallText(char* string, unsigned int y){
+    u8g2.clear();
+    u8g2.clearDisplay();
+
+    u8g2.setFont(u8g2_font_ncenB10_tr);
+    // y / 10 == 1 ? u8x8.setInverseFont(1) : u8x8.setInverseFont(0);
+    u8g2.drawStr(0, y, string);
+}
+
+void DrawLine(){
+    u8g2.clear();
+    u8g2.clearDisplay();
+
+    delay(1000);
+    u8g2.drawHLine(0,0,10);
+    delay(1000);
+    u8g2.drawHLine(0,31,10);
+}
+void DrawProgress(unsigned int percent){
+    u8g2.clear();
+    u8g2.clearDisplay();
+
+    u8g2.drawHLine(8,  55, 114);    // TOP
+    u8g2.drawVLine(8,  55, 8);      // LEFT
+
+    u8g2.drawHLine(8,  62, 114);    // BOTTOM
+    u8g2.drawVLine(120,55, 8);      // RIGHT
+
+    unsigned int width = map(percent, 0,100, 0, 114);
+    u8g2.drawHLine(10,  57, width); // PROGRESS
+    u8g2.drawHLine(10,  58, width); // BAR
+    u8g2.drawHLine(10,  59, width); // 4 PX
+    u8g2.drawHLine(10,  60, width); // TALL
+}
+
+void DrawBitmap(){
+    u8g2.clear();
+    u8g2.clearDisplay();
+
+    u8g2.drawBitmap(0,0,1024,32,splash);
+}
+
 
 // MyOled::MyOled() : Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET) {}
 

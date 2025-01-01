@@ -24,27 +24,47 @@ private:
 
     GlassState status = No_Glass;   // Glass status
     unsigned int glass_index;       // Glass index for the aRGB led
-    unsigned int glass_weight = 0;
-    unsigned int filled_ml = 0;     // Glass poured mililiters
+
+    long glass_reading        = 0;  // Last Strain Gauge beam reading
+    unsigned int glass_weight = 0;  // Glass measured weight
+    unsigned int glass_filled = 0;  // Glass poured mililiters
 
     void SetState(GlassState state);
-    void SetGlassWeight(unsigned int grams);
-
     unsigned int GetGlassWeight(void);
+    void ResetGlassWeight(void);
+
     /**
      * @brief Find difference between desired volume of drink and volume in glass
      *
      * @param volume Current volume desired to pour in milliliters
-     * @return volume - filled_ml in milliliters
+     * @return Difference between volumes in milliliters
      */
     unsigned int GetDifference(unsigned int volume);
 public:
     MyGlass(const GlassConfig* config, MyPump* myPump, MyLeds* led, unsigned int index);
     ~MyGlass();
 
+    /**
+     * @brief Set the Glass Weight
+     */
+    void SetGlassWeight(void);
+    /**
+     * @brief Get the Filled volume in glass
+     * @return Volume in milliliters
+     */
     unsigned int GetFilled(void);
+    /**
+     * @brief Get the State of a glass
+     * @return + FILLED
+     * @return + HALF
+     * @return + EMPTY
+     * @return + NO_GLASS
+     */
     GlassState GetState(void);
 
+    /**
+     * @brief Calibrate strain gauge
+     */
     void Calibrate(void);
 
     /**
@@ -55,14 +75,15 @@ public:
 
     /**
      * @brief Check Glass switch state to find glass state
-     *
      * @param volume Current volume desired to pour in milliliters
-     * @return + FILLED (3)
-     * @return + HALF (2)
-     * @return + EMPTY (1)
-     * @return + NO_GLASS (0)
      */
-    void Check(unsigned int volume);
+    void StatusCheck(unsigned int volume);
+
+    /**
+     * @brief Set glass LED according to the state
+     */
+    void StatusLED(void);
+    void StatusDEBUG(int reading);
 };
 
 #endif

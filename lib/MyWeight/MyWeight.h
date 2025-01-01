@@ -25,7 +25,7 @@ public:
 
     void Calibrate();
 
-    int Measure(unsigned int samples = 1);
+    long Measure(unsigned int samples = 1);
 
     void Zero();
 };

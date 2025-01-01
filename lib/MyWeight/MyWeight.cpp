@@ -10,7 +10,25 @@ MyWeight::MyWeight(unsigned int dout, unsigned int sck){
 MyWeight::~MyWeight(){}
 
 void MyWeight::Calibrate(){
-    //TODO
+    /*  //TODO
+        1. Get 1st raw reading
+        // remove weight //
+        get raw reading
+
+        2. Get 2nd raw reading
+        // place weight //
+        place known weight - e.g. 100g
+        get raw reading
+
+        3. Calculate scale factor
+        (float) scale factor = (expected delta) / (raw delta)
+        (float) scale factor = 100 * 1000 / (2nd_raw - 1st_raw); // x1000 cause the adc returns miligrams
+
+        4. Tare the weight
+        // remove weight //
+        set offset
+    */
+
     // dummy hardcode test value
     myScale.set_scale(0.802);
 
@@ -18,7 +36,7 @@ void MyWeight::Calibrate(){
     offset = myScale.get_value(5);
 }
 
-int MyWeight::Measure(unsigned int samples){
+long MyWeight::Measure(unsigned int samples){
     /* Get fresh reading */
     adc_reading = myScale.get_value(samples);
 

@@ -1,79 +1,79 @@
 #include "MyOled.h"
-#include <U8g2lib.h>
 
-// U8G2_SSD1306_128X32_UNIVISION_1_SW_I2C u8g2(U8G2_R0, /* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ U8X8_PIN_NONE);   // Adafruit Feather ESP8266/32u4 Boards + FeatherWing OLED
-// U8G2_SSD1306_128X32_UNIVISION_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);   // Adafruit ESP8266/32u4/ARM Boards + FeatherWing OLED
-U8G2_SSD1306_128X32_UNIVISION_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ SCL, /* data=*/ SDA);   // pin remapping with ESP8266 HW I2C
-
-// U8X8_SSD1306_128X32_UNIVISION_SW_I2C u8x8(/* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ U8X8_PIN_NONE);   // Adafruit Feather ESP8266/32u4 Boards + FeatherWing OLED
-// U8X8_SSD1306_128X32_UNIVISION_SW_I2C u8x8(/* clock=*/ 21, /* data=*/ 20, /* reset=*/ U8X8_PIN_NONE);   // Adafruit Feather M0 Basic Proto + FeatherWing OLED
-U8X8_SSD1306_128X32_UNIVISION_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);   // Adafruit ESP8266/32u4/ARM Boards + FeatherWing OLED
-
-#ifdef U8X8_HAVE_HW_SPI
-// #include <SPI.h>
-#endif
-#ifdef U8X8_HAVE_HW_I2C
-#include <Wire.h>
-#endif
-
-
-void DrawBegin(){
-    u8g2.begin();
-    u8g2.firstPage();
-    u8g2.setFont(u8g2_font_ncenB10_tr);
-    u8g2.drawStr(0,20,"Hello World!");
+// Initialize U8x8 for the SSD1306 128x64 display using software I2C
+U8X8_SSD1306_128X64_NONAME_SW_I2C u8x8(/* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ U8X8_PIN_NONE);
+// U8X8_SSD1306_128X64_NONAME_HW_I2C
+void DisplayInit(){
+    u8x8.begin();
+    u8x8.setFont(u8x8_font_chroma48medium8_r); // No memory to choose another XD
 }
 
+unsigned int CenterText(const char* string) {
+    // Width of each character is 8 pixels for this font
+    unsigned int char_width = 8;
+    // Width of the display is 128 pixels
+    unsigned int screen_width = 128 / char_width;
+    // Calculate the x position to center the text
+    unsigned int x_position = (screen_width - strlen(string)) / 2;
 
-void DrawText(char* string){
-    u8g2.clear();
-    u8g2.clearDisplay();
-
-    u8g2.setFont(u8g2_font_ncenB24_tr);
-    u8g2.drawStr(0, 0, string);
-}
-void DrawSmallText(char* string, unsigned int y){
-    u8g2.clear();
-    u8g2.clearDisplay();
-
-    u8g2.setFont(u8g2_font_ncenB10_tr);
-    // y / 10 == 1 ? u8x8.setInverseFont(1) : u8x8.setInverseFont(0);
-    u8g2.drawStr(0, y, string);
+    return x_position;
 }
 
-void DrawLine(){
-    u8g2.clear();
-    u8g2.clearDisplay();
-
-    delay(1000);
-    u8g2.drawHLine(0,0,10);
-    delay(1000);
-    u8g2.drawHLine(0,31,10);
-}
-void DrawProgress(unsigned int percent){
-    u8g2.clear();
-    u8g2.clearDisplay();
-
-    u8g2.drawHLine(8,  55, 114);    // TOP
-    u8g2.drawVLine(8,  55, 8);      // LEFT
-
-    u8g2.drawHLine(8,  62, 114);    // BOTTOM
-    u8g2.drawVLine(120,55, 8);      // RIGHT
-
-    unsigned int width = map(percent, 0,100, 0, 114);
-    u8g2.drawHLine(10,  57, width); // PROGRESS
-    u8g2.drawHLine(10,  58, width); // BAR
-    u8g2.drawHLine(10,  59, width); // 4 PX
-    u8g2.drawHLine(10,  60, width); // TALL
+void DisplayClear(){
+    u8x8.clearDisplay();
 }
 
-void DrawBitmap(){
-    u8g2.clear();
-    u8g2.clearDisplay();
+void DrawText(const char* string, unsigned int line) {
+    // u8x8.clear();
 
-    u8g2.drawBitmap(0,0,1024,32,splash);
+    unsigned int x = CenterText(string);        // Get the centered x position
+    u8x8.drawString(x, line, string);           // Draw the string at the calculated x and given y
 }
 
+void DrawLine() {
+    // U8x8 does not support drawing lines. Instead, use characters or text.
+    u8x8.drawString(0, 0, "----------");  // Simulate a horizontal line
+    u8x8.drawString(0, 3, "----------");  // Another line at row 3
+}
+
+void DrawProgress(unsigned int percent) {
+    unsigned int blocks = map(percent, 0, 100, 0, 10);  // Scale to 16 characters
+    char progressBar[] = "[          ]";                // Empty bar
+
+    for (unsigned int i = 0; i < blocks; ++i) {
+        progressBar[1+i] = '#';                         // Fill with progress
+    }
+
+    unsigned int x = CenterText(progressBar);           // Get the centered x position
+    u8x8.drawString(x, 4, progressBar);                 // Show progress bar
+}
+
+void DrawGlassCounter(int count, unsigned int glasses) {
+    static int last_count = 0;
+
+    if(last_count == count)
+        return;  // No need to update if the count hasn't changed
+
+    char glass[2 * glasses + 1];  // 2 chars per glass + 1 for the null terminator
+    glass[0] = '\0';  // Initialize as an empty string
+
+    for(unsigned int i = 0; i < glasses; i++) {
+        // Check if the ith glass is set in the count
+        if(count & (1 << i)) {
+            // Add the number of the glass followed by a space
+            snprintf(glass + strlen(glass), sizeof(glass) - strlen(glass), "%d ", i + 1);
+        }
+        else {
+            // If the glass is not set, add a space
+            snprintf(glass + strlen(glass), sizeof(glass) - strlen(glass), "  ");
+        }
+    }
+
+    // Draw the string with spaces between numbers
+    DrawText(glass, 7);
+
+    last_count = count;  // Store the last count to prevent redundant updates
+}
 
 // MyOled::MyOled() : Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET) {}
 

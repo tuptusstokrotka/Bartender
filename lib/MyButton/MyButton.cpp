@@ -22,6 +22,7 @@ int MyButton::GetState(){
         }
         else{
             last_State = RELEASE;
+            press_time = 0;
             return RELEASE;
         }
     }

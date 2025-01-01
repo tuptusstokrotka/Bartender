@@ -12,7 +12,7 @@
 #define PIN_SW      A6
 
 // Encoder naciśnij / przytrzymaj definicje
-#define HOLD_MS     400
+#define HOLD_MS     2000
 #define HOLD        2
 #define PRESS       1
 #define RELEASED    0

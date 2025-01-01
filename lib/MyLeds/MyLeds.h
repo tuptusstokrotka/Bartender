@@ -34,8 +34,17 @@ public:
 
     void ResetGlass(unsigned int num);
 
+    /**
+     * @brief Set the pixel static color
+     * @param num pixel number
+     * @param color pixel color
+     */
     void SetGlass(unsigned int num, uint32_t color);
-
+    /**
+     * @brief Set the pixel as gradient based on percent (red -> green)
+     * @param num pixel number
+     * @param percent gradient percent (0-100%)
+     */
     void SetGlassPercent(unsigned int num, unsigned int percent);
 };
 

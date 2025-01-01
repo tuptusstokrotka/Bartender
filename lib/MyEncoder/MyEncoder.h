@@ -11,7 +11,7 @@
 #define PIN_DT      A3
 #define PIN_SW      A6
 
-// Encoder naciśnij / przytrzymaj definicje
+// Encoder press / hold defines
 #define HOLD_MS     2000
 #define HOLD        2
 #define PRESS       1
@@ -20,7 +20,7 @@
 #define DEBOUNCE    50                  // Debouncing 50ms
 #define RESOLUTION  4                   // How many values is one tick (rotation)
 
-//FIXME
+//FIXME - alternative when using interrupt pins
 // class MyEncoder : public MyButton, Encoder{
 class MyEncoder : public MyButton{
 private:

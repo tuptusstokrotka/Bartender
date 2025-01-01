@@ -1,6 +1,7 @@
-#include "globals.h"
 #include "GlassConfig.h"
 #include "Bartender.h"
+
+#define GLASSES 6
 
 // Order based on the location of the strain gauge on the PCB
 GlassConfig GLASS_PINS[GLASSES] = {
@@ -12,7 +13,7 @@ GlassConfig GLASS_PINS[GLASSES] = {
   {7,  6,  212},  // KZ3
 };
 
-Bartender* ShotDoser;
+Bartender* ShotDoser = nullptr;
 
 void setup() {
   /* SERIAL COM INIT */

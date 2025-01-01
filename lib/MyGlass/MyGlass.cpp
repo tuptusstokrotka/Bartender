@@ -17,7 +17,7 @@ void MyGlass::ResetGlassWeight(void){
     glass_weight = 0;
 }
 void MyGlass::SetGlassWeight(void){
-    /* Do not overwrite */
+    /* Do not overwrite if weight has been set */
     if(glass_weight != 0)
         return;
     /* Reading value */
@@ -25,9 +25,8 @@ void MyGlass::SetGlassWeight(void){
 }
 unsigned int MyGlass::GetGlassWeight(void){ return glass_weight; }
 
-unsigned int MyGlass::GetFilled(void){
-    return glass_filled;
-}
+unsigned int MyGlass::GetFilled(void){ return glass_filled; }
+
 unsigned int MyGlass::GetDifference(unsigned int volume){
     return (volume < glass_filled) ? 0 : (volume - glass_filled);
 }
@@ -43,13 +42,13 @@ void MyGlass::Fill(unsigned int volume){
     /* Glass full - Stop pouring */
     if(glass_filled >= volume - STOP_ML_OFFSET){
         SetState(Filled);
-        Serial.println("fill - filled");
+        Serial.println("fill - filled");//DEBUG
     }
 }
 
 void MyGlass::StatusCheck(unsigned int volume){
     glass_reading = beam->Measure(1);                   // Measure total weight
-    StatusDEBUG(glass_reading);//DEBUG
+    // StatusDEBUG(glass_reading);//DEBUG
 
     /* No glass */
     if(glass_reading < GLASS_THRESHOLD){
@@ -79,7 +78,7 @@ void MyGlass::StatusCheck(unsigned int volume){
 
     /* Glass full */
     SetState(GlassState::Filled);                       // Set glass state
-    Serial.println("status check - filled");
+    Serial.println("status check - filled");//DEBUG
 }
 
 void MyGlass::StatusLED(void){
@@ -89,15 +88,15 @@ void MyGlass::StatusLED(void){
             break;
         }
         case Filled:{
-            led->SetGlass(glass_index, _green);         // Set glass led
+            led->SetGlass(glass_index, _green);         // Set glass green
             break;
         }
         case Empty:{
-            led->SetGlass(glass_index, _white);         // Reset glass led
+            led->SetGlass(glass_index, _white);         // Set glass white
             break;
         }
         case Half:{
-            led->SetGlass(glass_index, _orange);        // Reset glass led
+            led->SetGlass(glass_index, _orange);        // Set glass orange
             break;
         }
     }

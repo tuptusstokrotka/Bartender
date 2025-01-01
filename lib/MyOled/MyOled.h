@@ -3,15 +3,13 @@
 #pragma once
 
 #include <Arduino.h>
-#include <u8x8lib.h>
 #include <Wire.h>
+#include <u8x8lib.h>
 
 void DisplayInit();
 void DisplayClear();
 
 void DrawText(const char* string, unsigned int line);
-
-void DrawLine();
 
 void DrawProgress(unsigned int percent);
 

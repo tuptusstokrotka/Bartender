@@ -36,6 +36,7 @@ Bartender::~Bartender(){
 
 BartenderState Bartender::GetState(){ return this->status; }
 void Bartender::SetState(BartenderState status){
+    /* Clear screen from serving */
     if(this->status == serving)
         DisplayClear();
 

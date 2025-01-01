@@ -1,6 +1,6 @@
 #include "MyEncoder.h"
 
-//FIXME
+//FIXME - alternative when using interrupt pins
 // MyEncoder::MyEncoder(unsigned int pinA, unsigned int pinB) : MyButton(PIN_SW), Encoder(pinA, pinB) {
 
 MyEncoder::MyEncoder(unsigned int pinA, unsigned int pinB) : MyButton(PIN_SW, 1000){
@@ -18,6 +18,7 @@ void MyEncoder::Update(int *value){
         UpdateISR(value);
         return;
     #endif
+    // Has to use this crap until we switch pins to the interrupt
 
     // Read the current state of the encoder pins
     uint8_t encA = digitalRead(pinA);

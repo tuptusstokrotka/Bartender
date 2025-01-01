@@ -2,10 +2,14 @@
 
 // Initialize U8x8 for the SSD1306 128x64 display using software I2C
 U8X8_SSD1306_128X64_NONAME_SW_I2C u8x8(/* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ U8X8_PIN_NONE);
-// U8X8_SSD1306_128X64_NONAME_HW_I2C
+//U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);//CHECK
+
 void DisplayInit(){
     u8x8.begin();
-    u8x8.setFont(u8x8_font_chroma48medium8_r); // No memory to choose another XD
+    u8x8.setFont(u8x8_font_chroma48medium8_r);
+
+    //CHECK if possible to choose another to set big text (memory available)
+    // u8x8.setFont(u8x8_font_chroma48medium8_r);
 }
 
 unsigned int CenterText(const char* string) {
@@ -21,23 +25,17 @@ unsigned int CenterText(const char* string) {
 
 void DisplayClear(){
     u8x8.clearDisplay();
+    DrawGlassCounter(0, 6);
 }
 
 void DrawText(const char* string, unsigned int line) {
-    // u8x8.clear();
-
     unsigned int x = CenterText(string);        // Get the centered x position
     u8x8.drawString(x, line, string);           // Draw the string at the calculated x and given y
 }
 
-void DrawLine() {
-    // U8x8 does not support drawing lines. Instead, use characters or text.
-    u8x8.drawString(0, 0, "----------");  // Simulate a horizontal line
-    u8x8.drawString(0, 3, "----------");  // Another line at row 3
-}
-
 void DrawProgress(unsigned int percent) {
     unsigned int blocks = map(percent, 0, 100, 0, 10);  // Scale to 16 characters
+    blocks = constrain(blocks,0,10);                    // Limit progress bar to 0-100%
     char progressBar[] = "[          ]";                // Empty bar
 
     for (unsigned int i = 0; i < blocks; ++i) {

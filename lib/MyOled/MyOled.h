@@ -11,6 +11,8 @@ void DisplayClear();
 
 void DrawText(const char* string, unsigned int line);
 
+void DisplayVolume(long volume);
+
 void DrawProgress(unsigned int percent);
 
 void DrawGlassCounter(int count, unsigned int glasses);

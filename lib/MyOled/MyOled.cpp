@@ -7,9 +7,6 @@ U8X8_SSD1306_128X64_NONAME_SW_I2C u8x8(/* clock=*/ SCL, /* data=*/ SDA, /* reset
 void DisplayInit(){
     u8x8.begin();
     u8x8.setFont(u8x8_font_chroma48medium8_r);
-
-    //CHECK if possible to choose another to set big text (memory available)
-    // u8x8.setFont(u8x8_font_chroma48medium8_r);
 }
 
 unsigned int CenterText(const char* string) {
@@ -44,6 +41,18 @@ void DrawProgress(unsigned int percent) {
 
     unsigned int x = CenterText(progressBar);           // Get the centered x position
     u8x8.drawString(x, 4, progressBar);                 // Show progress bar
+}
+
+void DisplayVolume(long volume){
+    /* Set bigger font */
+    u8x8.setFont(u8x8_font_pcsenior_f);
+
+    /* Display volume */
+    String milliliters = "  " + String(volume) + " ml  ";
+    DrawText(milliliters.c_str(), 3);
+
+    /* Restore font */
+    u8x8.setFont(u8x8_font_chroma48medium8_r);
 }
 
 void DrawGlassCounter(int count, unsigned int glasses) {

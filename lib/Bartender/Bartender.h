@@ -31,8 +31,8 @@ private:
     MyEncoder myEncoder;
     MyPump myPump;
 
-    BartenderState status   = idle;
-    int volume              = 0;    // Currently set volume
+    BartenderState status   = idle; // Bartender working state
+    int volume              = 0;    // Currently set desired volume
     int glass_counter       = 0;    // Monitor number of placed glasses (1 bit per glass)
 
     /**
@@ -42,10 +42,12 @@ private:
      * it marks glass as full or half (with liquid but not full)
      */
     void GlassUpdate(void);
+
     /**
      * @brief Update currently displayed data on the OLED
      */
     void DisplayUpdate(void);
+
     /**
      * @brief Read and check encoder status
      * Update both encoder revolutions and button press.
@@ -56,15 +58,23 @@ private:
      */
     void EncoderUpdate(void);
 
-    BartenderState GetState();
+    /**
+     * @brief Get the Bartender state
+     * @return + idle
+     * @return + serving
+     * @return + calibration
+     */
+    BartenderState GetState(void);
+
+    /**
+     * @brief Set the Bartender state
+     * @param status idle / serving / calibration
+     */
     void SetState(BartenderState status);
 
 public:
     Bartender(unsigned int glasses, GlassConfig* config);
     ~Bartender();
-
-    unsigned int GetVolume();
-    void SetVolume(unsigned int volume);
 
     void Update();
     void Calibrate();

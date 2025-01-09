@@ -7,7 +7,7 @@
 #include "MyLeds.h"
 #include "MyPump.h"
 
-#define STOP_ML_OFFSET 0
+#define STOP_ML_OFFSET (long)0
 
 enum GlassState{
     No_Glass,
@@ -26,11 +26,11 @@ private:
     unsigned int glass_index;       // Glass index for the aRGB led
 
     long glass_reading        = 0;  // Last Strain Gauge beam reading
-    unsigned int glass_weight = 0;  // Glass measured weight
-    unsigned int glass_filled = 0;  // Glass poured mililiters
+    long glass_weight = 0;  // Glass measured weight
+    long glass_filled = 0;  // Glass poured mililiters
 
     void SetState(GlassState state);
-    unsigned int GetGlassWeight(void);
+    long GetGlassWeight(void);
     void ResetGlassWeight(void);
 
     /**
@@ -39,7 +39,7 @@ private:
      * @param volume Current volume desired to pour in milliliters
      * @return Difference between volumes in milliliters
      */
-    unsigned int GetDifference(unsigned int volume);
+    long GetDifference(long volume);
 public:
     MyGlass(const GlassConfig* config, MyPump* myPump, MyLeds* led, unsigned int index);
     ~MyGlass();
@@ -52,7 +52,7 @@ public:
      * @brief Get the Filled volume in glass
      * @return Volume in milliliters
      */
-    unsigned int GetFilled(void);
+    long GetFilled(void);
     /**
      * @brief Get the State of a glass
      * @return + FILLED

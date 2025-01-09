@@ -18,7 +18,6 @@ void MyEncoder::Update(int *value){
         UpdateISR(value);
         return;
     #endif
-    // Has to use this crap until we switch pins to the interrupt
 
     // Read the current state of the encoder pins
     uint8_t encA = digitalRead(pinA);

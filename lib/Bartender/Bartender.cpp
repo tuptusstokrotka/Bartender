@@ -34,9 +34,9 @@ Bartender::~Bartender(){
     delete[] myGlasses;
 }
 
-BartenderState Bartender::GetState(){ return this->status; }
+BartenderState Bartender::GetState(void){ return this->status; }
+
 void Bartender::SetState(BartenderState status){
-    /* Clear screen from serving */
     if(this->status == serving)
         DisplayClear();
 
@@ -59,10 +59,6 @@ void Bartender::SetState(BartenderState status){
     }
 }
 
-unsigned int Bartender::GetVolume(){ return this->volume; }
-void Bartender::SetVolume(unsigned int volume){ this->volume = volume; }
-
-
 void Bartender::Update(){
     GlassUpdate();
     EncoderUpdate();
@@ -71,6 +67,7 @@ void Bartender::Update(){
     switch (status){
         default:
         case idle:{
+            DisplayVolume(volume);
             // Set LED in idle
             for(unsigned int i = 0; i < glasses; i++)
                 myGlasses[i]->StatusLED();
@@ -169,7 +166,9 @@ void Bartender::ServeDrinks(){
             led->SetGlassPercent(i, percent);
 
             DrawProgress(percent);
-            DrawText((String(myGlasses[i]->GetFilled()) + " / " + String(volume) + " ml").c_str(), 5);
+
+            String milliliters = "  " + String(myGlasses[i]->GetFilled()) + " / " + String(volume) + " ml  ";
+            DrawText(milliliters.c_str(), 5);
             break;
         }
     }

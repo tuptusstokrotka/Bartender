@@ -1,5 +1,4 @@
 #include "MyGlass.h"
-#define GLAS_DEV if(glass_index == 2){ Serial.println("TOTAL: "+String(glass_reading)+" - GLASS: "+String(glass_weight)+" - FILLED: "+String(filled_ml)+"/"+String(volume));}
 
 MyGlass::MyGlass(const GlassConfig* config, MyPump* myPump, MyLeds* led, unsigned int index){
     this->glass_index = index;
@@ -17,17 +16,17 @@ void MyGlass::ResetGlassWeight(void){
     glass_weight = 0;
 }
 void MyGlass::SetGlassWeight(void){
-    /* Do not overwrite if weight has been set */
+    /* Do not overwrite */
     if(glass_weight != 0)
         return;
     /* Reading value */
     glass_weight = glass_reading;
 }
-unsigned int MyGlass::GetGlassWeight(void){ return glass_weight; }
+long MyGlass::GetGlassWeight(void){ return glass_weight; }
 
-unsigned int MyGlass::GetFilled(void){ return glass_filled; }
+long MyGlass::GetFilled(void){ return glass_filled; }
 
-unsigned int MyGlass::GetDifference(unsigned int volume){
+long MyGlass::GetDifference(long volume){
     return (volume < glass_filled) ? 0 : (volume - glass_filled);
 }
 
@@ -42,13 +41,14 @@ void MyGlass::Fill(unsigned int volume){
     /* Glass full - Stop pouring */
     if(glass_filled >= volume - STOP_ML_OFFSET){
         SetState(Filled);
-        Serial.println("fill - filled");//DEBUG
+        // Serial.println("fill - filled");//DEBUG
     }
 }
 
 void MyGlass::StatusCheck(unsigned int volume){
     glass_reading = beam->Measure(1);                   // Measure total weight
-    // StatusDEBUG(glass_reading);//DEBUG
+
+    StatusDEBUG(glass_reading);//DEBUG
 
     /* No glass */
     if(glass_reading < GLASS_THRESHOLD){
@@ -78,7 +78,7 @@ void MyGlass::StatusCheck(unsigned int volume){
 
     /* Glass full */
     SetState(GlassState::Filled);                       // Set glass state
-    Serial.println("status check - filled");//DEBUG
+    // Serial.println("status check - filled");//DEBUG
 }
 
 void MyGlass::StatusLED(void){
@@ -88,23 +88,35 @@ void MyGlass::StatusLED(void){
             break;
         }
         case Filled:{
-            led->SetGlass(glass_index, _green);         // Set glass green
+            led->SetGlass(glass_index, _green);         // Set glass led
             break;
         }
         case Empty:{
-            led->SetGlass(glass_index, _white);         // Set glass white
+            led->SetGlass(glass_index, _white);         // Reset glass led
             break;
         }
         case Half:{
-            led->SetGlass(glass_index, _orange);        // Set glass orange
+            led->SetGlass(glass_index, _orange);        // Reset glass led
             break;
         }
     }
 }
 
 void MyGlass::StatusDEBUG(int reading){
-    Serial.println("GLASS: "+String(glass_index));
-    Serial.println("Reading: "+String(reading));
-    Serial.println("Glassweight: "+String(GetGlassWeight()));
-    Serial.println("FIlled: "+String(glass_filled));
+    // plotter
+    String name = "GLASS_"+String(glass_index)+":";
+
+    Serial.print(name);
+    if(glass_index == 5)
+        Serial.println(reading);
+    else{
+        Serial.print(reading);
+        Serial.print(",");
+    }
+
+    // serial
+    // Serial.println("GLASS: "+String(glass_index));
+    // Serial.println("Reading: "+String(reading));
+    // Serial.println("Glassweight: "+String(GetGlassWeight()));
+    // Serial.println("FIlled: "+String(glass_filled));
 }

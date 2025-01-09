@@ -49,7 +49,7 @@ long MyWeight::Measure(unsigned int samples){
     }
 
     /* Converted to grams */
-    return converted / 1000;
+    return long(converted / 1000);
 }
 
 void MyWeight::Zero(){

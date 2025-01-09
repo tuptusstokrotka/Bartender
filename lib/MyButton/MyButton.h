@@ -5,11 +5,18 @@
 #include <Arduino.h>
 
 #define UNKNOWN     3
-#define HOLD        2
-#define PRESS       1
 #define RELEASE     0
+#define PRESS       1
+#define HOLD        2
 
-#define THRESHOLD 800
+enum ButtonState{
+    Unknown = -1,   // Between states, not defined
+    Release = 0,
+    Press   = 1,
+    Hold    = 2,
+};
+
+#define THRESHOLD 800               // analog value that will define HIGH state
 
 class MyButton{
 private:

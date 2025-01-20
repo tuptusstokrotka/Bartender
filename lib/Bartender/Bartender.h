@@ -13,6 +13,8 @@
 #include "MyEncoder.h"
 #include "MyPump.h"
 
+#define STOP_ML_OFFSET (long)10
+
 enum BartenderState{
     idle,
     serving,
@@ -31,22 +33,19 @@ private:
     MyEncoder myEncoder;
     MyPump myPump;
 
+    // Runtime variables
     BartenderState status   = idle; // Bartender working state
-    int volume              = 0;    // Currently set desired volume
+    long volume             = 0;    // Currently set desired volume
     int glass_counter       = 0;    // Monitor number of placed glasses (1 bit per glass)
+    unsigned int cur_glass  = 0;    // Currently chosen glass to pour
 
     /**
      * @brief Check each glass strain gauge reading.
      * Update glass status and glass counter.
-     * @note Status includes selected volume,
+     * @note Status includes drink volume,
      * it marks glass as full or half (with liquid but not full)
      */
     void GlassUpdate(void);
-
-    /**
-     * @brief Update currently displayed data on the OLED
-     */
-    void DisplayUpdate(void);
 
     /**
      * @brief Read and check encoder status
@@ -57,6 +56,16 @@ private:
      * @note + HOLD - calibrate
      */
     void EncoderUpdate(void);
+
+    /**
+     * @brief Update glasses LEDs according to the bartender status and glass state
+     */
+    void LedUpdate(void);
+
+    /**
+     * @brief Update currently displayed data on the OLED
+     */
+    void DisplayUpdate(void);
 
     /**
      * @brief Get the Bartender state
@@ -74,11 +83,11 @@ private:
 
 public:
     Bartender(unsigned int glasses, GlassConfig* config);
-    ~Bartender();
+    ~Bartender(void);
 
-    void Update();
-    void Calibrate();
-    void ServeDrinks();
+    void Update(void);
+    void Calibrate(void);
+    void ServeDrinks(void);
 };
 
 #endif

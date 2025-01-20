@@ -13,7 +13,7 @@
 
 class MyServo : public Servo {
 private:
-    float* angles;              // Dynamically allocated array for glasses positions
+    int* angles;                // Dynamically allocated array for glasses positions
     unsigned int glasses;       // Number of glasses
 public:
     MyServo(unsigned int glasses, GlassConfig* config);
@@ -21,6 +21,14 @@ public:
 
     // Write position to the glass
     void MoveTo(unsigned int glass);
+
+    /**
+     * @brief Check if servo position has been set.
+     * @param glass desired angle
+     * @note This will only check if servo has angle set, not reached
+     * @return true if angle has been set
+     */
+    bool CheckIfSet(unsigned int glass);
 
 };
 

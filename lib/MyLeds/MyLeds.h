@@ -45,7 +45,7 @@ public:
      * @param num pixel number
      * @param percent gradient percent (0-100%)
      */
-    void SetGlassPercent(unsigned int num, unsigned int percent);
+    void SetGlassPercent(unsigned int num, int percent);
 };
 
 #endif

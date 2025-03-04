@@ -13,7 +13,7 @@
 #include "MyEncoder.h"
 #include "MyPump.h"
 
-#define STOP_ML_OFFSET (long)10
+#define STOP_ML_OFFSET (long)2
 
 enum BartenderState{
     idle,

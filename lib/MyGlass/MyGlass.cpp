@@ -1,8 +1,7 @@
 #include "MyGlass.h"
 
-MyGlass::MyGlass(const GlassConfig* config, MyPump* myPump, MyLeds* led, unsigned int index){
+MyGlass::MyGlass(const GlassConfig* config, MyLeds* led, unsigned int index){
     this->glass_index = index;
-    this->myPump = myPump;
     this->led = led;
 
     beam = new MyWeight(config->dout, config->sck);
@@ -34,6 +33,7 @@ long MyGlass::GetDifference(long volume){
 void MyGlass::Calibrate(void){
     led->SetGlass(glass_index, _yellow);
     beam->Calibrate();
+    // beam->Calibrate(step); // Advanced calibration - WIP
     led->SetGlass(glass_index, _black);
 }
 
@@ -47,7 +47,7 @@ void MyGlass::StatusCheck(unsigned int volume){
         led->SetGlass(glass_index, _black);             // Reset glass led
         ResetGlassWeight();                             // Reset glass weight
         SetState(GlassState::No_Glass);                 // Reset glass state
-        glass_filled = 0;
+        glass_filled = 0;                               // Reset glass filled milliliters
         return;
     }
 
@@ -77,10 +77,6 @@ void MyGlass::StatusLED(void){
             led->SetGlass(glass_index, _black);         // Reset glass led
             break;
         }
-        case Filled:{
-            led->SetGlass(glass_index, _green);         // Set glass led GREEN
-            break;
-        }
         case Empty:{
             led->SetGlass(glass_index, _white);         // Set glass led WHITE
             break;
@@ -89,7 +85,14 @@ void MyGlass::StatusLED(void){
             led->SetGlass(glass_index, _orange);        // Set glass led ORANGE
             break;
         }
+        case Filled:{
+            led->SetGlass(glass_index, _green);         // Set glass led GREEN
+            break;
+        }
     }
+}
+void MyGlass::PercentLED(int percent){
+    led->SetGlassPercent(glass_index, percent);
 }
 
 void MyGlass::StatusDEBUG(int reading){

@@ -17,7 +17,7 @@ Bartender::Bartender(unsigned int glasses, GlassConfig* config){
     // Allocate an array of pointers to MyGlass
     myGlasses = new MyGlass*[glasses];
     for(unsigned int i = 0; i < glasses; i++){
-        myGlasses[i] = new MyGlass((config + sizeof(*config)/sizeof(GlassConfig) * i), &myPump, led, i);
+        myGlasses[i] = new MyGlass((config + sizeof(*config)/sizeof(GlassConfig) * i), led, i);
         myGlasses[i]->Calibrate();
     }
 
@@ -91,6 +91,7 @@ void Bartender::Update(void){
 }
 
 void Bartender::GlassUpdate(void){
+    //CHECK one by one in each loop
     // static unsigned int index = 0;
     // myGlasses[index]->StatusCheck(volume);
     // myGlasses[index]->GetState() != No_Glass ? glass_counter |= (1 << index) : glass_counter &= ~(1 << index);
@@ -98,6 +99,7 @@ void Bartender::GlassUpdate(void){
     // ++index %= glasses;
     // return;
 
+    //CHECK all glasses per loop
     for(unsigned int i = 0; i < glasses; i++) {
         myGlasses[i]->StatusCheck(volume);
         myGlasses[i]->GetState() != No_Glass ? glass_counter |= (1 << i) : glass_counter &= ~(1 << i);
@@ -125,9 +127,6 @@ void Bartender::EncoderUpdate(void){
             else{
                 SetState(idle);
             }
-
-            /* Start serving / Abort serving */
-            // (GetState() == idle && glass_counter != 0) ? SetState(serving) :  SetState(idle);
             break;
         }
         /* ENCODER HOLD */
@@ -157,16 +156,16 @@ void Bartender::LedUpdate(void){
             if(myGlasses[cur_glass]->GetState() == GlassState::No_Glass || myGlasses[cur_glass]->GetGlassWeight() == 0)
                 break;
 
+            /* Get filled percentage - clamp in range [0, 100] */
             int percent = int((float)myGlasses[cur_glass]->GetFilled() / (float)volume * 100);
-            /* Clamp the percentage to the range [0, 100] */
             percent = constrain(percent, 0, 100);
 
             /* Set LED according to the volume - Gradient in range 0-100% */
-            led->SetGlassPercent(cur_glass, percent);
+            myGlasses[cur_glass]->PercentLED(percent);
             break;
         }
         case BartenderState::calibration:{
-            /* do something */
+            /* do nothing */
             break;
         }
     }

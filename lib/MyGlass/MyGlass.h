@@ -5,7 +5,6 @@
 #include "GlassConfig.h"
 #include "MyWeight.h"
 #include "MyLeds.h"
-#include "MyPump.h"
 
 #ifndef GLASS_DEBUG_PRINT_ENABLE
 #define GLASS_DEBUG_PRINT_ENABLE 0
@@ -31,7 +30,6 @@ class MyGlass{
 private:
     MyWeight* beam = nullptr;       // Strain Gauge beam pointer
     MyLeds* led = nullptr;          // Led pointer
-    MyPump* myPump = nullptr;       // Pump instance
 
     GlassState status = No_Glass;   // Glass status
     unsigned int glass_index;       // Glass index for the aRGB led
@@ -51,7 +49,7 @@ private:
      */
     long GetDifference(long volume);
 public:
-    MyGlass(const GlassConfig* config, MyPump* myPump, MyLeds* led, unsigned int index);
+    MyGlass(const GlassConfig* config, MyLeds* led, unsigned int index);
     ~MyGlass();
 
     /**
@@ -89,6 +87,10 @@ public:
      * @brief Set glass LED according to the state
      */
     void StatusLED(void);
+    /**
+     * @brief Set glass LED according volume percent
+     */
+    void PercentLED(int percent);
     void StatusDEBUG(int reading);
 };
 

@@ -5,10 +5,6 @@
 #include "Arduino.h"
 #include "HX711.h"              // weight library
 
-// HX711 PINS
-#define LOADCELL_DOUT_PIN 15    // was 2
-#define LOADCELL_SCK_PIN  13    // was 3
-
 class MyWeight{
 private:
     HX711 myScale;              // HX711 instance
@@ -23,7 +19,8 @@ public:
     MyWeight(unsigned int dout, unsigned int sck);
     ~MyWeight();
 
-    void Calibrate();
+    void Calibrate();                   // Fixed scale calibration - offset only
+    void Calibrate(unsigned int step);  // Advanced calibration with known weight
 
     long Measure(unsigned int samples = 1);
 

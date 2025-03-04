@@ -2,7 +2,7 @@
 
 MyLeds::MyLeds(unsigned int pixels) : Adafruit_NeoPixel(pixels, LEDS_PIN, LEDS_TYPE) {
     begin();            // Initialize the NeoPixel library
-    setBrightness(25); // Set maximum brightness
+    setBrightness(200); // Set maximum brightness
 }
 
 MyLeds::~MyLeds(){}
@@ -22,10 +22,7 @@ void MyLeds::SetGlass(unsigned int num, uint32_t color){
     show();
 }
 
-void MyLeds::SetGlassPercent(unsigned int num, unsigned int percent){
-    // Clamp the percentage to the range [0, 100]
-    if (percent > 100) percent = 100;
-
+void MyLeds::SetGlassPercent(unsigned int num, int percent){
     // Calculate red and green intensity based on percentage
     uint8_t red   = (255 * (100 - percent)) / 100;  // Red decreases as percent increases
     uint8_t green = (255 * percent) / 100;          // Green increases as percent increases

@@ -11,7 +11,7 @@ MyServo::MyServo(unsigned int glasses, GlassConfig* config) : Servo () {
     detach();                                   // STOP JITTERING
 
     this->glasses = glasses;
-    angles = new float[glasses];
+    angles = new int[glasses];
 
     for (unsigned int i = 0; i < glasses; i++) {
         angles[i] = (config + sizeof(*config)/sizeof(GlassConfig) * i)->angle;
@@ -25,8 +25,11 @@ void MyServo::MoveTo(unsigned int glass){
 
     write(angles[glass] + OFFSET);              // Set glass position
 
-    // while (read() != (angles[glass] + OFFSET)){;} //CHECK if this is better
     delay(MAX_MOVE_TIME);                       // LITTLE DELAY TO SET SERVO
 
     detach();                                   // STOP JITTERING
+}
+
+bool MyServo::CheckIfSet(unsigned int glass){
+    return read() == int(angles[glass]);
 }

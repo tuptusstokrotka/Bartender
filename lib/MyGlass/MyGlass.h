@@ -7,7 +7,18 @@
 #include "MyLeds.h"
 #include "MyPump.h"
 
-#define STOP_ML_OFFSET (long)0
+#ifndef GLASS_DEBUG_PRINT_ENABLE
+#define GLASS_DEBUG_PRINT_ENABLE 0
+#endif
+
+#if GLASS_DEBUG_PRINT_ENABLE == 1
+    #include <Arduino.h>
+    #define GLASS_DEBUG_PRINT(s) Serial.print(s);
+    #define GLASS_DEBUG_PRINTLN(s) Serial.println(s);
+#else
+    #define GLASS_DEBUG_PRINT(s) ;
+    #define GLASS_DEBUG_PRINTLN(s) ;
+#endif
 
 enum GlassState{
     No_Glass,
@@ -25,12 +36,11 @@ private:
     GlassState status = No_Glass;   // Glass status
     unsigned int glass_index;       // Glass index for the aRGB led
 
-    long glass_reading        = 0;  // Last Strain Gauge beam reading
-    long glass_weight = 0;  // Glass measured weight
-    long glass_filled = 0;  // Glass poured mililiters
+    long glass_reading  = 0;        // Last Strain Gauge beam reading
+    long glass_weight   = 0;        // Glass measured weight
+    long glass_filled   = 0;        // Glass poured mililiters
 
     void SetState(GlassState state);
-    long GetGlassWeight(void);
     void ResetGlassWeight(void);
 
     /**
@@ -48,6 +58,8 @@ public:
      * @brief Set the Glass Weight
      */
     void SetGlassWeight(void);
+    long GetGlassWeight(void);
+
     /**
      * @brief Get the Filled volume in glass
      * @return Volume in milliliters
@@ -66,12 +78,6 @@ public:
      * @brief Calibrate strain gauge
      */
     void Calibrate(void);
-
-    /**
-     * @brief Update glass volume poured. Used to verify glass status
-     * @param volume poured milliliters of drink that is in glass
-     */
-    void Fill(unsigned int volume);
 
     /**
      * @brief Check Glass switch state to find glass state

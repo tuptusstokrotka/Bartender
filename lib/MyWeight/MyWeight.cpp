@@ -28,7 +28,6 @@ void MyWeight::Calibrate(){
         // remove weight //
         set offset
     */
-
     // dummy hardcode test value
     myScale.set_scale(0.802);
 
@@ -37,15 +36,17 @@ void MyWeight::Calibrate(){
 }
 
 long MyWeight::Measure(unsigned int samples){
-    /* Get fresh reading */
-    adc_reading = myScale.get_value(samples);
+    if(myScale.is_ready()){
+        /* Get fresh reading */
+        adc_reading = myScale.get_value(samples);
 
-    /* PARSING, CONVERTING, OFFSETING */
-    adc_reading = constrain(adc_reading - offset, -1000000, 1200000); // This should limit in range [-1250, 1500]g
+        /* PARSING, CONVERTING, OFFSETING */
+        adc_reading = constrain(adc_reading - offset, -1000000, 1200000); // This should limit in range [-1250, 1500]g
 
-    /* TEST IF VALUE HAS CHANGED */
-    if(converted != adc_reading / myScale.get_scale()){
-        converted = adc_reading / myScale.get_scale();          // This should be grams or whatever
+        /* TEST IF VALUE HAS CHANGED */
+        if(converted != adc_reading / myScale.get_scale()){
+            converted = adc_reading / myScale.get_scale();          // This should be grams or whatever
+        }
     }
 
     /* Converted to grams */

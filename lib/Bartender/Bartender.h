@@ -13,7 +13,8 @@
 #include "MyEncoder.h"
 #include "MyPump.h"
 
-#define STOP_ML_OFFSET (long)2
+#define STOP_ML_OFFSET   (long)2
+#define SERVO_PUMP_DELAY delay(500); //DEBUG Delay between powering servo & pump
 
 enum BartenderState{
     idle,

@@ -31,5 +31,7 @@ void MyServo::MoveTo(unsigned int glass){
 }
 
 bool MyServo::CheckIfSet(unsigned int glass){
-    return read() == int(angles[glass]);
+    int currentPos = read();
+    int targetPos = angles[glass];
+    return abs(currentPos - targetPos) <= 2;   // 2 degree tolerance
 }

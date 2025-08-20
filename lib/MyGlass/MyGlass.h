@@ -12,11 +12,11 @@
 
 #if GLASS_DEBUG_PRINT_ENABLE == 1
     #include <Arduino.h>
-    #define GLASS_DEBUG_PRINT(s) Serial.print(s);
-    #define GLASS_DEBUG_PRINTLN(s) Serial.println(s);
+    #define GLASS_DEBUG_PRINT(s)    Serial.print(s);
+    #define GLASS_DEBUG_PRINTLN(s)  Serial.println(s);
 #else
-    #define GLASS_DEBUG_PRINT(s) ;
-    #define GLASS_DEBUG_PRINTLN(s) ;
+    #define GLASS_DEBUG_PRINT(s)    ;
+    #define GLASS_DEBUG_PRINTLN(s)  ;
 #endif
 
 enum GlassState{

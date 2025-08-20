@@ -101,7 +101,7 @@ void MyGlass::StatusDEBUG(int reading){
         String name = "GLASS_"+String(glass_index)+":";
 
         GLASS_DEBUG_PRINT(name);
-        if(glass_index == 5){
+        if(glass_index == 5){ //DEBUG set max glass index
             GLASS_DEBUG_PRINTLN(reading);
         }
         else {

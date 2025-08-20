@@ -43,7 +43,7 @@ void Bartender::SetState(BartenderState status){
     switch (status) {
         case idle:
             DrawText("Bartender", 0);
-            myPump.Stop(); //CHECK
+            myPump.Stop(); //CHECK if needed
             myServo->MoveTo(0);
             /* Clear progress bar */
             DisplayClearLine(5);
@@ -227,26 +227,28 @@ void Bartender::ServeDrinks(void){
         /* Skip glass */
         case No_Glass:
         case Filled:{
-            myPump.Stop();  //CHECK
-            delay(500);     //CHECK wait for the drops to fall - this might be redundant if offset works
+            myPump.Stop();   //CHECK If this 'Filled' stops the pump or 'Half'
+            SERVO_PUMP_DELAY //CHECK wait for the drops to fall - this might be redundant if offset works
             cur_glass++;
             break;
         }
         /* Fill glass */
         case Empty:
         case Half:{
-            if(myServo->CheckIfSet(cur_glass) == false){
+            //TODO This is stupid bypass to pour to glass 0. Need better solution
+            if(myServo->CheckIfSet(cur_glass) == false || cur_glass == 0){
                 /* Set servo position */
                 myServo->MoveTo(cur_glass);
-
+                SERVO_PUMP_DELAY
                 /* Start pouring */
                 myPump.Start();
             }
 
-            //CHECK adjust value of the offset, this only stops pouring, and should NOT change state i guess
             if(myGlasses[cur_glass]->GetFilled() >= volume - STOP_ML_OFFSET){
+                //CHECK maybe set glass to filled instead
                 /* Stop pouring */
-                myPump.Stop();  //CHECK
+                myPump.Stop();
+                SERVO_PUMP_DELAY
             }
 
             break;

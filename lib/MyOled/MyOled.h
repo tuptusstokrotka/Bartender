@@ -15,8 +15,6 @@ void DisplayClearLine(unsigned int line);
 
 unsigned int CenterText(const char* string, unsigned int font_width = 8);
 
-void Test();
-
 void DrawText(const char* string, unsigned int line, bool clear = true);
 void DrawBigText(const char* string, unsigned int line, bool clear = true);
 

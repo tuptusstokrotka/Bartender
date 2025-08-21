@@ -1,6 +1,6 @@
-#include "MyWeight.h"
+#include "board/Weight.h"
 
-MyWeight::MyWeight(unsigned int dout, unsigned int sck){
+MyWeight::MyWeight(uint8_t dout, uint8_t sck){
     this->dout = dout;
     this->sck = sck;
     // Scale begin
@@ -16,7 +16,7 @@ void MyWeight::Calibrate(){
     // Set offset on init
     offset = myScale.get_value(5);
 }
-void MyWeight::Calibrate(unsigned int step){
+void MyWeight::Calibrate(uint8_t step){
     switch(step){
         case 0:{ // Get 1st raw reading
             // remove weight //
@@ -44,7 +44,7 @@ void MyWeight::Calibrate(unsigned int step){
     }
 }
 
-long MyWeight::Measure(unsigned int samples){
+long MyWeight::Measure(uint8_t samples){
     if(myScale.is_ready()){
         /* Get fresh reading */
         adc_reading = myScale.get_value(samples);

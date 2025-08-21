@@ -5,16 +5,24 @@
 
 #include "EEPROM.h"
 #include "eeprom_address.h"
+#include <ArduinoSTL.h>
+#include <vector>
 
-#include "MyLeds.h"
-#include "MyServo.h"
-#include "MyGlass.h"
-#include "MyOled.h"
-#include "MyEncoder.h"
-#include "MyPump.h"
+#include "bartender/glass.h"
+#include "board/Leds.h"
+#include "board/Servo.h"
+#include "board/Oled.h"
+#include "board/Encoder.h"
+#include "board/Pump.h"
 
 #define STOP_ML_OFFSET   (long)2
 #define SERVO_PUMP_DELAY delay(500); //DEBUG Delay between powering servo & pump
+
+#define UPDATE_INTERVAL(ms)     static unsigned long last_update = 0;  \
+                                if(millis() - last_update > ms){       \
+                                    last_update = millis();            \
+                                    return;                            \
+                                }
 
 enum BartenderState{
     idle,
@@ -25,20 +33,24 @@ enum BartenderState{
 class Bartender{
 private:
     // Dynamically allocated based on the # of the glasses
-    MyLeds *led         = nullptr;
-    MyServo *myServo    = nullptr;
-    MyGlass **myGlasses = nullptr;
-    unsigned int glasses = 0;       // the # of the glasses
+    std::vector<MyGlass> myGlasses;
+    MyLeds *led = nullptr;
 
     // Static independent on glasses
+    MyServo myServo;
     MyEncoder myEncoder;
     MyPump myPump;
 
     // Runtime variables
     BartenderState status   = idle; // Bartender working state
     long volume             = 0;    // Currently set desired volume
-    int glass_counter       = 0;    // Monitor number of placed glasses (1 bit per glass)
-    unsigned int cur_glass  = 0;    // Currently chosen glass to pour
+    uint8_t glass_counter   = 0;    // Monitor number of placed glasses (1 bit per glass)
+    uint8_t cur_glass       = 0;    // Currently chosen glass to pour or calibrate
+
+    // Display flags
+    bool display_glass_counter  = false;
+    bool display_state_changed  = false;
+    bool display_volume_changed = true;  // Show on bootup
 
     /**
      * @brief Check each glass strain gauge reading.
@@ -52,7 +64,6 @@ private:
      * @brief Read and check encoder status
      * Update both encoder revolutions and button press.
      *
-     * @note default behaviour:
      * @note + PRESS - serve drinks
      * @note + HOLD - calibrate
      */
@@ -74,7 +85,7 @@ private:
      * @return + serving
      * @return + calibration
      */
-    BartenderState GetState(void);
+    BartenderState GetState(void) { return this->status; }
 
     /**
      * @brief Set the Bartender state
@@ -83,10 +94,15 @@ private:
     void SetState(BartenderState status);
 
 public:
-    Bartender(unsigned int glasses, GlassConfig* config);
+    Bartender(void);
     ~Bartender(void);
 
+    void AddGlass(GlassConfig &config);
+    void AddGlass(uint8_t dout, uint8_t sck, int angle);
+
+    void Init(void);
     void Update(void);
+
     void Calibrate(void);
     void ServeDrinks(void);
 };

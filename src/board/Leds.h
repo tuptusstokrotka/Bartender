@@ -3,9 +3,9 @@
 #pragma once
 
 #include "Arduino.h"
+#include "pin_config.h"
 #include "Adafruit_NeoPixel.h"
 
-#define LEDS_PIN A1
 #define LEDS_TYPE (NEO_GRB + NEO_KHZ800)
 
 enum COLOR {
@@ -25,27 +25,27 @@ enum COLOR {
 
 class MyLeds : public Adafruit_NeoPixel{
 private:
-    unsigned int pixels;
+    uint8_t pixels;
 public:
-    MyLeds(unsigned int pixels);
+    MyLeds(uint8_t pixels);
     ~MyLeds();
 
     void ResetAll(void);
 
-    void ResetGlass(unsigned int num);
+    void ResetGlass(uint8_t num);
 
     /**
      * @brief Set the pixel static color
      * @param num pixel number
      * @param color pixel color
      */
-    void SetGlass(unsigned int num, uint32_t color);
+    void SetGlass(uint8_t num, uint32_t color);
     /**
      * @brief Set the pixel as gradient based on percent (red -> green)
      * @param num pixel number
      * @param percent gradient percent (0-100%)
      */
-    void SetGlassPercent(unsigned int num, int percent);
+    void SetGlassPercent(uint8_t num, int percent);
 };
 
 #endif

@@ -2,9 +2,9 @@
 #define MyGlass_H
 #pragma once
 
-#include "GlassConfig.h"
-#include "MyWeight.h"
-#include "MyLeds.h"
+#include "bartender/glassConfig.h"
+#include "board/Weight.h"
+#include "board/Leds.h"
 
 #ifndef GLASS_DEBUG_PRINT_ENABLE
 #define GLASS_DEBUG_PRINT_ENABLE 0
@@ -29,17 +29,13 @@ enum GlassState{
 class MyGlass{
 private:
     MyWeight* beam = nullptr;       // Strain Gauge beam pointer
-    MyLeds* led = nullptr;          // Led pointer
-
     GlassState status = No_Glass;   // Glass status
-    unsigned int glass_index;       // Glass index for the aRGB led
+    int angle = 0;                  // Glass angle
 
-    long glass_reading  = 0;        // Last Strain Gauge beam reading
-    long glass_weight   = 0;        // Glass measured weight
-    long glass_filled   = 0;        // Glass poured mililiters
+    long glass_brutto = 0;          // Last Strain Gauge beam reading
+    long glass_tare   = 0;          // Glass measured weight
+    long glass_netto  = 0;          // Glass poured mililiters
 
-    void SetState(GlassState state);
-    void ResetGlassWeight(void);
 
     /**
      * @brief Find difference between desired volume of drink and volume in glass
@@ -49,20 +45,24 @@ private:
      */
     long GetDifference(long volume);
 public:
-    MyGlass(const GlassConfig* config, MyLeds* led, unsigned int index);
+
+    MyGlass(const GlassConfig &config);
     ~MyGlass();
 
     /**
      * @brief Set the Glass Weight
      */
     void SetGlassWeight(void);
-    long GetGlassWeight(void);
+    long GetGlassWeight(void) { return glass_tare; }
+    void ResetGlassWeight(void) { glass_tare = 0; }
 
     /**
      * @brief Get the Filled volume in glass
      * @return Volume in milliliters
      */
-    long GetFilled(void);
+    long GetFilled(void) { return glass_netto; }
+
+    void SetState(GlassState state) { status = state; }
     /**
      * @brief Get the State of a glass
      * @return + FILLED
@@ -70,7 +70,9 @@ public:
      * @return + EMPTY
      * @return + NO_GLASS
      */
-    GlassState GetState(void);
+    GlassState GetState(void) { return status; }
+
+    int GetAngle(void) { return angle; }
 
     /**
      * @brief Calibrate strain gauge
@@ -83,14 +85,6 @@ public:
      */
     void StatusCheck(unsigned int volume);
 
-    /**
-     * @brief Set glass LED according to the state
-     */
-    void StatusLED(void);
-    /**
-     * @brief Set glass LED according volume percent
-     */
-    void PercentLED(int percent);
     void StatusDEBUG(int reading);
 };
 

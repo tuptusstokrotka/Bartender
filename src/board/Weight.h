@@ -8,21 +8,21 @@
 class MyWeight{
 private:
     HX711 myScale;              // HX711 instance
-    unsigned int dout;
-    unsigned int sck;
+    uint8_t dout;
+    uint8_t sck;
 
     long  adc_reading = 0;      // ADC reading
     float converted   = 0;      // ADC converted by scale factor
     long  offset      = 0;      // Offset when tare
 
 public:
-    MyWeight(unsigned int dout, unsigned int sck);
+    MyWeight(uint8_t dout, uint8_t sck);
     ~MyWeight();
 
     void Calibrate();                   // Fixed scale calibration - offset only
-    void Calibrate(unsigned int step);  // Advanced calibration with known weight
+    void Calibrate(uint8_t step);  // Advanced calibration with known weight
 
-    long Measure(unsigned int samples = 1);
+    long Measure(uint8_t samples = 1);
 
     void Zero();
 };

@@ -1,4 +1,4 @@
-#include "MyOled.h"
+#include "board/Oled.h"
 
 // Initialize U8x8 for the SSD1306 128x64 display using software I2C
 U8X8_SSD1306_128X64_NONAME_SW_I2C u8x8(/* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ U8X8_PIN_NONE);

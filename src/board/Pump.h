@@ -6,9 +6,14 @@
 #include "pin_config.h"
 
 class MyPump{
+private:
+    bool running = false;
+
 public:
     MyPump();
     ~MyPump();
+
+    bool IsRunning(void) { return running; }
 
     /**
      * @brief Start water pump to pour drink

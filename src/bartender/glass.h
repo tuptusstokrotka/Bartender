@@ -6,19 +6,6 @@
 #include "board/Weight.h"
 #include "board/Leds.h"
 
-#ifndef GLASS_DEBUG_PRINT_ENABLE
-#define GLASS_DEBUG_PRINT_ENABLE 0
-#endif
-
-#if GLASS_DEBUG_PRINT_ENABLE == 1
-    #include <Arduino.h>
-    #define GLASS_DEBUG_PRINT(s)    Serial.print(s);
-    #define GLASS_DEBUG_PRINTLN(s)  Serial.println(s);
-#else
-    #define GLASS_DEBUG_PRINT(s)    ;
-    #define GLASS_DEBUG_PRINTLN(s)  ;
-#endif
-
 enum GlassState{
     No_Glass,
     Empty,
@@ -87,8 +74,6 @@ public:
      * @param volume Current volume desired to pour in milliliters
      */
     void StatusCheck(unsigned int volume);
-
-    void StatusDEBUG(int reading);
 };
 
 #endif

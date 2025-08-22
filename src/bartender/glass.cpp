@@ -25,21 +25,19 @@ void MyGlass::Calibrate(void){
 }
 
 void MyGlass::StatusCheck(unsigned int volume){
-    glass_brutto = beam->Measure(1);                    // Measure total weight
-
-    StatusDEBUG(glass_brutto);
+    glass_brutto = beam->Measure(1);
 
     /* No glass */
     if(glass_brutto < GLASS_THRESHOLD){
-        ResetGlassWeight();                             // Reset glass weight
-        SetState(GlassState::No_Glass);                 // Reset glass state
-        glass_netto = 0;                                // Reset glass filled milliliters
+        ResetGlassWeight();
+        SetState(GlassState::No_Glass);
+        glass_netto = 0;
         return;
     }
 
     /* New Glass on the strain gauge */
     if(glass_tare == 0){
-        SetState(GlassState::Empty);                    // Set glass state
+        SetState(GlassState::Empty);
         return;
     }
 
@@ -49,26 +47,10 @@ void MyGlass::StatusCheck(unsigned int volume){
 
     /* Glass not full */
     if(GetDifference(volume) > 0){
-        SetState(GlassState::Half);                     // Set glass state
+        SetState(GlassState::Half);
         return;
     }
 
     /* Glass full */
-    SetState(GlassState::Filled);                       // Set glass state
-}
-
-void MyGlass::StatusDEBUG(int reading){
-    // plotter
-    #if GLASS_DEBUG_PRINT_ENABLE == 1
-        String name = "GLASS_"+String(glass_index)+":";
-
-        GLASS_DEBUG_PRINT(name);
-        if(glass_index == 5){ //DEBUG set max glass index
-            GLASS_DEBUG_PRINTLN(reading);
-        }
-        else {
-            GLASS_DEBUG_PRINT(reading);
-            GLASS_DEBUG_PRINT(",");
-        }
-    #endif
+    SetState(GlassState::Filled);
 }

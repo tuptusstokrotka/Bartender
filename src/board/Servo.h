@@ -7,7 +7,7 @@
 #include <Servo.h>
 
 #define OFFSET 0
-#define MAX_MOVE_TIME 1000      // HOW LONG IT CAN MOVE
+#define MAX_MOVE_TIME 1000      // How long the servo will block the program via Delay()
 
 class MyServo {
 private:

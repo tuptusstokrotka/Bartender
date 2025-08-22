@@ -105,5 +105,4 @@ void DrawGlassCounter(int count, unsigned int glasses) {
 void DrawFinished(void){
     char success[] = "SUCCESS";
     DrawText(success, 5);
-    delay(1000);
 }

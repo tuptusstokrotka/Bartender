@@ -32,7 +32,8 @@
 enum BartenderState{
     idle,
     serving,
-    calibration
+    calibration,
+    finished
 };
 
 class Bartender{
@@ -97,6 +98,8 @@ private:
      * @param status idle / serving / calibration
      */
     void SetState(BartenderState status);
+
+    void SetNextGlass(void);
 
 public:
     Bartender(void);

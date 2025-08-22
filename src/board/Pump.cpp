@@ -10,8 +10,10 @@ MyPump::~MyPump(){}
 
 void MyPump::Start(){
     digitalWrite(PUMP_PIN_COIL1, HIGH);              // TURN ON WATER PUMP
+    running = true;
 }
 
 void MyPump::Stop(){
     digitalWrite(PUMP_PIN_COIL1, LOW);               // TURN OFF WATER PUMP
+    running = false;
 }

@@ -26,11 +26,14 @@ void Bartender::AddGlass(uint8_t dout, uint8_t sck, int angle, int8_t led_index)
 void Bartender::SetState(BartenderState status){
     this->status = status;
     cur_glass = 0;
-
     display_state_changed = true;
 
     switch (status) {
         case BartenderState::idle:
+            /* Stop pump */
+            if(myPump.IsRunning())
+                myPump.Stop();
+
             /* Reset servo position */
             myServo.MoveTo(0);
             break;
@@ -40,10 +43,23 @@ void Bartender::SetState(BartenderState status){
                 myGlasses[i].SetGlassWeight();
             }
             break;
+        case BartenderState::finished:
+            if(myPump.IsRunning())
+                myPump.Stop();
+            break;
         case BartenderState::calibration:
         default:
             break;
     }
+}
+
+void Bartender::SetNextGlass(void){
+    if(myPump.IsRunning()){
+        myPump.Stop();
+        SERVO_PUMP_DELAY //DEBUG
+    }
+
+    cur_glass++;
 }
 
 void Bartender::Init(void){
@@ -75,6 +91,18 @@ void Bartender::Update(void){
         }
         case BartenderState::calibration:{
             Calibrate();
+            break;
+        }
+        case BartenderState::finished:{
+            static unsigned long last_update = 0;
+            if(last_update == 0){
+                last_update = millis();
+            }
+            /* Return to idle after 1 second */
+            if(millis() - last_update > 1000){
+                last_update = 0;
+                SetState(idle);
+            }
             break;
         }
     }
@@ -133,7 +161,6 @@ void Bartender::LedUpdate(void){
     // Skip during calibration - as long as hx711 is reading in blocking way
     if(status == BartenderState::calibration)
         return;
-
 
     for(uint8_t i = 0; i < myGlasses.size(); i++) {
         int8_t led_index = myGlasses[i].GetLedIndex();
@@ -199,6 +226,9 @@ void Bartender::DisplayUpdate(void){
                 DisplayClearLine(4);
                 DisplayClearLine(5);
                 break;
+            case BartenderState::finished:
+                DrawFinished();
+                break;
             default:
                 break;
         }
@@ -215,47 +245,47 @@ void Bartender::DisplayUpdate(void){
         display_volume_changed = false;
     }
 
+    if(status != BartenderState::serving)
+        return;
+
+    // Progress Bar
     static int last_percent = 0;
     int percent = int((float)myGlasses[cur_glass].GetFilled() / (float)volume * 100);
     percent = constrain(percent, 0, 100);
 
-    if(status == serving && last_percent != percent){
+    if(last_percent != percent)
         DrawProgressBar(percent);
-    }
+    last_percent = percent;
 }
 
 void Bartender::ServeDrinks(void){
     /* Finished or No Glass */
     if(cur_glass >= myGlasses.size() || glass_counter == 0){
-        if(cur_glass != 0)
-            DrawFinished(); // Draw Finished string
-        SetState(idle);     // Return to IDLE
+        SetState(finished);
         return;
     }
 
-    //TODO IF PUMP IS RUNNING & glass UP. PUMP STOP
-
     /* Skip glass with unset weight */
     if(myGlasses[cur_glass].GetGlassWeight() == 0){
-        cur_glass++;
+        SetNextGlass();
         return;
     }
 
     switch (myGlasses[cur_glass].GetState()){
         /* Skip glass */
-        case No_Glass:
-            cur_glass++;
+        case No_Glass:{
+            SetNextGlass();
             break;
+        }
         /* Fill glass */
         case Empty:
         case Half:{
             int angle = myGlasses[cur_glass].GetAngle();
-            //CHECK This will fail to work if 1st glass is set to 0
             if(myServo.CheckIfSet(angle) == false){
                 /* Set servo position */
                 myServo.MoveTo(angle);
             }
-            else{
+            else if(!myPump.IsRunning()){
                 SERVO_PUMP_DELAY //DEBUG
                 /* Start pouring */
                 myPump.Start();
@@ -268,9 +298,7 @@ void Bartender::ServeDrinks(void){
         }
         /* Finished pouring */
         case Filled:{
-            myPump.Stop();
-            SERVO_PUMP_DELAY //DEBUG
-            cur_glass++;
+            SetNextGlass();
             break;
         }
     }

@@ -69,19 +69,15 @@ void DrawProgressBar(unsigned int percent) {
 }
 
 void DisplayVolume(long volume){
-    static long last_value = 0;
+    static long last_value = 0; // Monitor width of the last text
 
     int last_digits = last_value > 0 ? (int)log10(last_value) + 1 : 1;
     int current_digits = volume > 0 ? (int)log10(volume) + 1 : 1;
 
     String milliliters = String(volume) + " ml";
 
-    if(last_digits != current_digits)
-        // Clear screen
-        DrawBigText(milliliters.c_str(), 3);
-    else
-        // Overwrite screen
-        DrawBigText(milliliters.c_str(), 3, false);
+    bool clear_screen = last_digits != current_digits;
+    DrawBigText(milliliters.c_str(), 3, clear_screen);
 
     last_value = volume;
 }

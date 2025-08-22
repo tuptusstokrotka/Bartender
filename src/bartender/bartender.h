@@ -24,6 +24,11 @@
                                     return;                            \
                                 }
 
+#define ENCODER_REFRESH_INTERVAL 1
+#define GLASS_REFRESH_INTERVAL   5
+#define DISPLAY_REFRESH_INTERVAL 20
+
+
 enum BartenderState{
     idle,
     serving,
@@ -43,9 +48,9 @@ private:
 
     // Runtime variables
     BartenderState status   = idle; // Bartender working state
-    long volume             = 0;    // Currently set desired volume
+    int32_t volume          = 0;    // Currently set desired volume
     uint8_t glass_counter   = 0;    // Monitor number of placed glasses (1 bit per glass)
-    uint8_t cur_glass       = 0;    // Currently chosen glass to pour or calibrate
+    uint8_t cur_glass       = 0;    // Currently chosen glass for action
 
     // Display flags
     bool display_glass_counter  = false;
@@ -98,7 +103,7 @@ public:
     ~Bartender(void);
 
     void AddGlass(GlassConfig &config);
-    void AddGlass(uint8_t dout, uint8_t sck, int angle);
+    void AddGlass(uint8_t dout, uint8_t sck, int angle, int8_t led_index = -1);
 
     void Init(void);
     void Update(void);

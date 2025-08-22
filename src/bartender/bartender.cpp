@@ -13,8 +13,13 @@ Bartender::~Bartender(void){
 void Bartender::AddGlass(GlassConfig &config){
     myGlasses.push_back(MyGlass(config));
 }
-void Bartender::AddGlass(uint8_t dout, uint8_t sck, int angle){
-    GlassConfig cfg = {dout, sck, angle};
+void Bartender::AddGlass(uint8_t dout, uint8_t sck, int angle, int8_t led_index){
+    GlassConfig cfg;
+    cfg.dout      = dout;
+    cfg.sck       = sck;
+    cfg.angle     = angle;
+    cfg.led_index = (led_index == -1) ? (int8_t)myGlasses.size() : led_index;
+
     AddGlass(cfg);
 }
 
@@ -22,7 +27,7 @@ void Bartender::SetState(BartenderState status){
     this->status = status;
     cur_glass = 0;
 
-    display_state_changed |= true; // Do not clear if set
+    display_state_changed = true;
 
     switch (status) {
         case BartenderState::idle:
@@ -42,7 +47,12 @@ void Bartender::SetState(BartenderState status){
 }
 
 void Bartender::Init(void){
-    led = new MyLeds(myGlasses.size());
+    // Check the highest led index
+    int8_t pixels = myGlasses.size();
+    for(auto &glass : myGlasses){
+        pixels = (glass.GetLedIndex() > pixels) ? (glass.GetLedIndex() + 1) : pixels;
+    }
+    led = new MyLeds(pixels);
 
     DrawText("Calibration", 0); // Dummy text to show just after bootup
     Calibrate();
@@ -50,7 +60,6 @@ void Bartender::Init(void){
 void Bartender::Update(void){
     GlassUpdate();
     EncoderUpdate();
-
     LedUpdate();
     DisplayUpdate();
 
@@ -72,6 +81,8 @@ void Bartender::Update(void){
 }
 
 void Bartender::GlassUpdate(void){
+    UPDATE_INTERVAL(GLASS_REFRESH_INTERVAL);
+
     uint8_t counter = glass_counter;
     for(uint8_t i = 0; i < myGlasses.size(); i++) {
         myGlasses[i].StatusCheck(volume);
@@ -79,14 +90,15 @@ void Bartender::GlassUpdate(void){
     }
 
     // Set flag - Do not clear if set
-    display_glass_counter |= counter != glass_counter;
+    display_glass_counter |= (counter != glass_counter);
 }
 void Bartender::EncoderUpdate(void){
+    UPDATE_INTERVAL(ENCODER_REFRESH_INTERVAL);
+
     /* READ ENCODER ROTATION AND SAVE VOLUME */
     if(myEncoder.Update(volume) == true){
         EEPROM.put(EEPROM_VOLUME, volume);
-        // Set flag - Do not clear if set
-        display_volume_changed |= true;
+        display_volume_changed = true;
     }
 
     /* READ ENCODER BUTTON */
@@ -115,7 +127,8 @@ void Bartender::EncoderUpdate(void){
     }
 }
 void Bartender::LedUpdate(void){
-    UPDATE_INTERVAL(1);
+    // Sync with glass update - otherwise it will reuse old data
+    UPDATE_INTERVAL(GLASS_REFRESH_INTERVAL);
 
     // Skip during calibration - as long as hx711 is reading in blocking way
     if(status == BartenderState::calibration)
@@ -123,26 +136,28 @@ void Bartender::LedUpdate(void){
 
 
     for(uint8_t i = 0; i < myGlasses.size(); i++) {
+        int8_t led_index = myGlasses[i].GetLedIndex();
+
         switch (myGlasses[i].GetState()){
             case No_Glass:{
-                led->SetGlass(i, _black);                       // Reset glass led
+                led->SetGlass(led_index, _black);               // Reset glass led
                 break;
             }
             case Empty:{
-                led->SetGlass(i, _white);                       // Set glass led WHITE
+                led->SetGlass(led_index, _white);               // Set glass led WHITE
                 break;
             }
             case Half:{
                 switch (status){
                     default:
                     case BartenderState::idle:{
-                        led->SetGlass(i, _orange);              // Set glass led ORANGE
+                        led->SetGlass(led_index, _orange);      // Set glass led ORANGE
                         break;
                     }
                     case BartenderState::serving:{
                         // Glass not selected to pour
                         if(i != cur_glass){
-                            led->SetGlass(i, _yellow);          // Set glass led YELLOW
+                            led->SetGlass(led_index, _yellow);  // Set glass led YELLOW
                             break;
                         }
 
@@ -151,21 +166,21 @@ void Bartender::LedUpdate(void){
                         percent = constrain(percent, 0, 100);
 
                         /* Set LED according to the volume - Gradient in range 0-100% */
-                        led->SetGlassPercent(i, percent);
+                        led->SetGlassPercent(led_index, percent);
                         break;
                     }
                 }
                 break;
             }
             case Filled:{
-                led->SetGlass(i, _green);                       // Set glass led GREEN
+                led->SetGlass(led_index, _green);               // Set glass led GREEN
                 break;
             }
         }
     }
 }
 void Bartender::DisplayUpdate(void){
-    UPDATE_INTERVAL(20);
+    UPDATE_INTERVAL(DISPLAY_REFRESH_INTERVAL);
 
     if(display_state_changed){
         switch (status) {
@@ -218,6 +233,8 @@ void Bartender::ServeDrinks(void){
         return;
     }
 
+    //TODO IF PUMP IS RUNNING & glass UP. PUMP STOP
+
     /* Skip glass with unset weight */
     if(myGlasses[cur_glass].GetGlassWeight() == 0){
         cur_glass++;
@@ -233,13 +250,15 @@ void Bartender::ServeDrinks(void){
         case Empty:
         case Half:{
             int angle = myGlasses[cur_glass].GetAngle();
-            //TODO This is stupid bypass to pour to glass 0. Need better solution
-            if(myServo.CheckIfSet(angle) == false ){ // || cur_glass == 0
+            //CHECK This will fail to work if 1st glass is set to 0
+            if(myServo.CheckIfSet(angle) == false){
                 /* Set servo position */
                 myServo.MoveTo(angle);
-                SERVO_PUMP_DELAY
+            }
+            else{
+                SERVO_PUMP_DELAY //DEBUG
                 /* Start pouring */
-                myPump.Start(); //myPump.Start();
+                myPump.Start();
             }
 
             if(myGlasses[cur_glass].GetFilled() >= volume - STOP_ML_OFFSET){
@@ -250,20 +269,22 @@ void Bartender::ServeDrinks(void){
         /* Finished pouring */
         case Filled:{
             myPump.Stop();
-            SERVO_PUMP_DELAY //CHECK wait for the drops to fall - this might be redundant if offset works
+            SERVO_PUMP_DELAY //DEBUG
             cur_glass++;
             break;
         }
     }
 }
 void Bartender::Calibrate(void){
+    // Must set the led here - as hx711 is reading in blocking way
     for(uint8_t i = 0; i < myGlasses.size(); i++) {
-        led->SetGlass(i, _yellow);
+        int8_t led_index = myGlasses[i].GetLedIndex();
+        led->SetGlass(led_index, _yellow);
 
         myGlasses[i].Calibrate();
         delay(100);
 
-        led->SetGlass(i, _black);
+        led->SetGlass(led_index, _black);
     }
 
     SetState(idle);

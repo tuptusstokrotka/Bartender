@@ -8,8 +8,8 @@
 #define SERVO_PIN_SIG   A0
 
 // encoder
-#define ENC_PIN_CLK     3 // ISR
-#define ENC_PIN_DT      2 // ISR
+#define ENC_PIN_CLK     3   // ISR
+#define ENC_PIN_DT      2   // ISR
 #define ENC_PIN_SW      A6
 
 // leds

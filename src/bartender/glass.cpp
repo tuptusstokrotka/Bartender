@@ -1,8 +1,9 @@
 #include "glass.h"
 
 MyGlass::MyGlass(const GlassConfig &config){
-    beam = new MyWeight(config.dout, config.sck);
-    this->angle = config.angle;
+    this->beam      = new MyWeight(config.dout, config.sck);
+    this->angle     = config.angle;
+    this->led_index = config.led_index;
 }
 MyGlass::~MyGlass(){}
 

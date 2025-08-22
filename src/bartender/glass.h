@@ -28,13 +28,15 @@ enum GlassState{
 
 class MyGlass{
 private:
-    MyWeight* beam = nullptr;       // Strain Gauge beam pointer
-    GlassState status = No_Glass;   // Glass status
-    int angle = 0;                  // Glass angle
+    GlassState status   = No_Glass; // Glass status
 
-    long glass_brutto = 0;          // Last Strain Gauge beam reading
-    long glass_tare   = 0;          // Glass measured weight
-    long glass_netto  = 0;          // Glass poured mililiters
+    MyWeight* beam      = nullptr;  // Strain Gauge beam pointer
+    int angle           = 0;        // Glass angle
+    int8_t led_index    = -1;       // LED index (-1 if not set)
+
+    long glass_brutto   = 0;        // Last Strain Gauge beam reading
+    long glass_tare     = 0;        // Glass measured weight
+    long glass_netto    = 0;        // Glass poured mililiters
 
 
     /**
@@ -73,6 +75,7 @@ public:
     GlassState GetState(void) { return status; }
 
     int GetAngle(void) { return angle; }
+    int8_t GetLedIndex(void) { return led_index; }
 
     /**
      * @brief Calibrate strain gauge

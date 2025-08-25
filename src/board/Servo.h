@@ -6,7 +6,7 @@
 #include "pin_config.h"
 #include <Servo.h>
 
-#define OFFSET 0
+#define OFFSET 0                // Offset from desired angle to actual angle - offset every set angle
 #define MAX_MOVE_TIME 1000      // How long the servo will block the program via Delay()
 
 class MyServo {
@@ -17,13 +17,17 @@ public:
     MyServo();
     ~MyServo();
 
-    // Write position to the glass
+    /**
+     * @brief Write angle to the servo
+     * @param angle in degrees
+     * @return void
+     */
     void MoveTo(int angle);
 
     /**
      * @brief Check if servo position has been set.
-     * @param angle desired angle
-     * @note This will only check if servo has angle set, not reached
+     * @param angle desired angle in degrees
+     * @note This will only check if servo has angle set, not if reached (unsupported by servo)
      * @return true if angle has been set
      */
     bool CheckIfSet(int angle);

@@ -15,8 +15,8 @@
 #include "board/Encoder.h"
 #include "board/Pump.h"
 
-#define STOP_ML_OFFSET   (long)2
-#define SERVO_PUMP_DELAY delay(500); //DEBUG Delay between powering servo & pump
+#define STOP_ML_OFFSET   (long)2        // Offset from filled volume to stop pouring
+#define SERVO_PUMP_DELAY delay(500);    //DEBUG Delay between powering servo & pump
 
 #define UPDATE_INTERVAL(ms)     static unsigned long last_update = 0;  \
                                 if(millis() - last_update > ms){       \
@@ -33,6 +33,7 @@ enum BartenderState{
     idle,
     serving,
     calibration,
+    calibration_advanced,
     finished
 };
 

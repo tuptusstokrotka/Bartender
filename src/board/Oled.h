@@ -11,18 +11,18 @@
 
 void DisplayInit();
 void DisplayClear();
-void DisplayClearLine(unsigned int line);
+void DisplayClearLine(uint8_t line);
 
-unsigned int CenterText(const char* string, unsigned int font_width = 8);
+uint8_t CenterText(const char* string, uint8_t font_width = 8);
 
-void DrawText(const char* string, unsigned int line, bool clear = true);
-void DrawBigText(const char* string, unsigned int line, bool clear = true);
+void DrawText(const char* string, uint8_t line, bool clear = true);
+void DrawBigText(const char* string, uint8_t line, bool clear = true);
 
-void DrawProgressBar(unsigned int percent);
+void DrawProgressBar(uint8_t percent);
 
-void DisplayVolume(long volume);
+void DrawVolume(int32_t volume);
 
-void DrawGlassCounter(int count, unsigned int glasses);
+void DrawGlassCounter(uint8_t count, uint8_t glasses);
 
 void DrawFinished(void);
 

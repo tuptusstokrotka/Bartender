@@ -43,7 +43,7 @@ void MyGlass::StatusCheck(unsigned int volume){
 
     /* Glass weight set */
     /* Update filled milliliters */
-    glass_brutto <= 0 ? glass_netto = 0 : glass_netto = glass_brutto - glass_tare;
+    glass_brutto > 0 ? glass_netto = glass_brutto - glass_tare : glass_netto = 0;
 
     /* Glass not full */
     if(GetDifference(volume) > 0){

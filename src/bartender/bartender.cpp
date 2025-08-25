@@ -45,7 +45,7 @@ void Bartender::SetState(BartenderState status){
             break;
         case BartenderState::finished:
             if(myPump.IsRunning())
-                myPump.Stop();
+                myPump.Stop();      // This is a MUST in current program flow
             break;
         case BartenderState::calibration:
         default:
@@ -54,6 +54,7 @@ void Bartender::SetState(BartenderState status){
 }
 
 void Bartender::SetNextGlass(void){
+    /* Stop pump before changing glass */
     if(myPump.IsRunning()){
         myPump.Stop();
         SERVO_PUMP_DELAY //DEBUG
@@ -213,7 +214,7 @@ void Bartender::DisplayUpdate(void){
         switch (status) {
             case BartenderState::idle:
                 DrawText("Bartender", 0);
-                DisplayVolume(volume);
+                DrawVolume(volume);
                 DisplayClearLine(5); // Clear progress bar
                 break;
             case BartenderState::serving:
@@ -241,7 +242,7 @@ void Bartender::DisplayUpdate(void){
     }
 
     if(display_volume_changed){
-        DisplayVolume(volume);
+        DrawVolume(volume);
         display_volume_changed = false;
     }
 
@@ -254,7 +255,7 @@ void Bartender::DisplayUpdate(void){
     percent = constrain(percent, 0, 100);
 
     if(last_percent != percent)
-        DrawProgressBar(percent);
+        DrawProgressBar((uint8_t)percent);
     last_percent = percent;
 }
 

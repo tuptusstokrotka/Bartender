@@ -10,26 +10,26 @@ void DisplayClear(){
     u8x8.clearDisplay();
 }
 
-void DisplayClearLine(unsigned int line){
+void DisplayClearLine(uint8_t line){
     u8x8.clearLine(line);
 }
 
-unsigned int CenterText(const char* string, unsigned int font_width) {
+uint8_t CenterText(const char* string, uint8_t font_width) {
     // Get string length excluding null terminator
-    unsigned int used_space = strlen(string);
+    uint8_t used_space = strlen(string);
 
     // 16px font is made out of 2 x 8px
     if(font_width == 16)
         used_space *= 2;
 
     // Calculate remaining space on either side
-    unsigned int free_space = (SCREEN_WIDTH / 8) - used_space;
+    uint8_t free_space = (SCREEN_WIDTH / 8) - used_space;
 
     // Return centered X
     return free_space / 2;
 }
 
-void DrawText(const char* string, unsigned int line, bool clear) {
+void DrawText(const char* string, uint8_t line, bool clear) {
     /* Set 8px font */
     u8x8.setFont(u8x8_font_chroma48medium8_r);
 
@@ -38,11 +38,11 @@ void DrawText(const char* string, unsigned int line, bool clear) {
         u8x8.clearLine(line);
     }
 
-    unsigned int x = CenterText(string);                // Get the centered x position
-    u8x8.drawString(x, line, string);                   // Draw the string at the calculated x and given y
+    uint8_t x = CenterText(string);                 // Get the centered x position
+    u8x8.drawString(x, line, string);               // Draw the string at the calculated x and given y
 }
 
-void DrawBigText(const char* string, unsigned int line, bool clear) {
+void DrawBigText(const char* string, uint8_t line, bool clear) {
     /* Set 16px font */
     u8x8.setFont(u8x8_font_px437wyse700a_2x2_r);
 
@@ -52,24 +52,24 @@ void DrawBigText(const char* string, unsigned int line, bool clear) {
         u8x8.clearLine(line+1);
     }
 
-    unsigned int x = CenterText(string, 16);            // Get the centered x position
-    u8x8.drawString(x, line, string);                   // Draw the string at the calculated x and given y
+    uint8_t x = CenterText(string, 16);            // Get the centered x position
+    u8x8.drawString(x, line, string);              // Draw the string at the calculated x and given y
 }
 
-void DrawProgressBar(unsigned int percent) {
-    unsigned int blocks = map(percent, 0, 100, 0, 10);  // Scale to 16 characters
-    blocks = constrain(blocks,0,10);                    // Limit progress bar to 0-100%
+void DrawProgressBar(uint8_t percent) {
+    uint8_t blocks = map(percent, 0, 100, 0, 10);  // Scale to 16 characters
+    blocks = constrain(blocks,0,10);               // Limit progress bar to 0-100%
 
-    char progressBar[] = "[          ]";                // Empty bar
-    for (unsigned int i = 0; i < blocks; ++i) {
-        progressBar[1+i] = '#';                         // Fill with progress
+    char progressBar[] = "[          ]";           // Empty bar
+    for (uint8_t i = 0; i < blocks; ++i) {
+        progressBar[1+i] = '#';                    // Fill with progress
     }
 
     DrawText(progressBar, 5, false);
 }
 
-void DisplayVolume(long volume){
-    static long last_value = 0; // Monitor width of the last text
+void DrawVolume(int32_t volume){
+    static long last_value = 0; // Monitor the width of the last volume text
 
     int last_digits = last_value > 0 ? (int)log10(last_value) + 1 : 1;
     int current_digits = volume > 0 ? (int)log10(volume) + 1 : 1;
@@ -82,11 +82,11 @@ void DisplayVolume(long volume){
     last_value = volume;
 }
 
-void DrawGlassCounter(int count, unsigned int glasses) {
+void DrawGlassCounter(uint8_t count, uint8_t glasses) {
     char glass[2 * glasses + 1];  // 2 chars per glass + 1 for the null terminator
     glass[0] = '\0';  // Initialize as an empty string
 
-    for(unsigned int i = 0; i < glasses; i++) {
+    for(uint8_t i = 0; i < glasses; i++) {
         // Check if the ith glass is set in the count
         if(count & (1 << i)) {
             // Add the number of the glass followed by a space

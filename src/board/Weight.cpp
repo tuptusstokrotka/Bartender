@@ -11,7 +11,7 @@ MyWeight::~MyWeight(){}
 
 void MyWeight::Calibrate(){
     // dummy hardcode test value
-    myScale.set_scale(0.802);
+    myScale.set_scale(1.7);
 
     // Set offset on init
     offset = myScale.get_value(5);

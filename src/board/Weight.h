@@ -20,9 +20,11 @@ public:
     ~MyWeight();
 
     void Calibrate();              // Fixed scale calibration - offset only
-    void Calibrate(uint8_t step);  // Advanced calibration with known weight
+    void SetFactor(float factor);
+    float CalculateScaleFactor(long raw_empty, long raw_weight, long known_weight);
 
     long Measure(uint8_t samples = 1);
+    long GetRawReading(uint8_t samples = 5);  // Get raw ADC reading
 
     void Zero();
 };

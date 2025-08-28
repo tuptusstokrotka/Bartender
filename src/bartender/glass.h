@@ -69,6 +69,13 @@ public:
      */
     void Calibrate(void);
 
+    // Advanced calibration methods
+    long GetRawReading(uint8_t samples = 5) { return beam->GetRawReading(samples); }
+    float CalculateScaleFactor(long raw_empty, long raw_weight, long known_weight) {
+        return beam->CalculateScaleFactor(raw_empty, raw_weight, known_weight);
+    }
+    void SetFactor(float factor) { beam->SetFactor(factor); }
+
     /**
      * @brief Check Glass switch state to find glass state
      * @param volume Current volume desired to pour in milliliters

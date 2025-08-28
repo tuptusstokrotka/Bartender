@@ -2,6 +2,7 @@
 
 Bartender::Bartender(void){
     this->volume = EEPROM.read(EEPROM_VOLUME);
+    volume = constrain(volume, MIN_VALUE, MAX_VALUE);
 
     DisplayInit();
     DrawText("Bootup", 0);
@@ -48,6 +49,14 @@ void Bartender::SetState(BartenderState status){
                 myPump.Stop();      // This is a MUST in current program flow
             break;
         case BartenderState::calibration:
+            cal_step = PREPARE;
+            cal_button_pressed = false;
+            /* Reset glasses leds */
+            for(uint8_t i = 0; i < myGlasses.size(); i++) {
+                led->SetGlass(myGlasses[i].GetLedIndex(), _black);
+            }
+            led->SetGlassPercent(myGlasses[0].GetLedIndex(), 0);
+            break;
         default:
             break;
     }
@@ -66,8 +75,10 @@ void Bartender::SetNextGlass(void){
 void Bartender::Init(void){
     // Check the highest led index
     int8_t pixels = myGlasses.size();
+    float factor = EEPROM.read(EEPROM_FACTOR);
     for(auto &glass : myGlasses){
         pixels = (glass.GetLedIndex() > pixels) ? (glass.GetLedIndex() + 1) : pixels;
+        glass.SetFactor(factor);
     }
     led = new MyLeds(pixels);
 
@@ -91,7 +102,7 @@ void Bartender::Update(void){
             break;
         }
         case BartenderState::calibration:{
-            Calibrate();
+            UpdateAdvancedCalibration();
             break;
         }
         case BartenderState::finished:{
@@ -137,6 +148,9 @@ void Bartender::EncoderUpdate(void){
             /* Start serving / Abort serving */
             if(GetState() == idle && glass_counter != 0){
                 SetState(serving);
+            }
+            else if(GetState() == calibration){
+                cal_button_pressed = true;
             }
             else{
                 SetState(idle);
@@ -223,8 +237,8 @@ void Bartender::DisplayUpdate(void){
             case BartenderState::calibration:
                 DrawText("Calibration", 0);
                 /* Clear middle data */
-                DisplayClearLine(3);
-                DisplayClearLine(4);
+                // DisplayClearLine(3); //CHECK
+                // DisplayClearLine(4); //CHECK
                 DisplayClearLine(5);
                 break;
             case BartenderState::finished:
@@ -317,4 +331,64 @@ void Bartender::Calibrate(void){
     }
 
     SetState(idle);
+}
+
+void Bartender::UpdateAdvancedCalibration(void){
+    static long cal_raw_empty = 0;
+    static long cal_raw_weight = 0;
+    static long cal_grams = 0;
+
+    // Check for button press
+    if(!cal_button_pressed)
+        return;
+
+    cal_button_pressed = false;
+
+    switch(cal_step){
+        case PREPARE:{
+            DrawText("EMPTY BEAM", 5);
+            led->SetGlassPercent(myGlasses[0].GetLedIndex(), 25);
+            break;
+        }
+        case EMPTY_BEAM:{
+            // Get reading with no weight
+            cal_raw_empty = myGlasses[0].GetRawReading(5);
+
+            cal_step = KNOWN_WEIGHT;
+            DrawText("PLACE WEIGHT", 5);
+            led->SetGlassPercent(myGlasses[0].GetLedIndex(), 50);
+            break;
+        }
+        case KNOWN_WEIGHT:{
+            // Get reading with known weight
+            cal_raw_weight = myGlasses[0].GetRawReading(5);
+
+            cal_step = SET_GRAMS;
+            DrawText("SET GRAMS", 5);
+            led->SetGlassPercent(myGlasses[0].GetLedIndex(), 75);
+            break;
+        }
+        case SET_GRAMS:{
+            cal_grams = volume;
+
+            DrawText("CALCULATE", 5);
+            cal_step = CALCULATE;
+            led->SetGlassPercent(myGlasses[0].GetLedIndex(), 100);
+            break;
+        }
+        case CALCULATE:{
+            // Calculate new scale factor
+            float factor = myGlasses[0].CalculateScaleFactor(cal_raw_empty, cal_raw_weight, cal_grams);
+
+            // Set factor to all glasses
+            for(uint8_t i = 0; i < myGlasses.size(); i++) {
+                myGlasses[i].SetFactor(factor);
+            }
+            EEPROM.put(EEPROM_FACTOR, factor);
+            led->SetGlass(myGlasses[0].GetLedIndex(), _black);
+
+            SetState(idle);
+            break;
+        }
+    }
 }

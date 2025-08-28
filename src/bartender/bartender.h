@@ -33,8 +33,15 @@ enum BartenderState{
     idle,
     serving,
     calibration,
-    calibration_advanced,
     finished
+};
+
+enum CalibrationStep {
+    PREPARE,
+    EMPTY_BEAM,
+    KNOWN_WEIGHT,
+    SET_GRAMS,
+    CALCULATE
 };
 
 class Bartender{
@@ -53,6 +60,10 @@ private:
     int32_t volume          = 0;    // Currently set desired volume
     uint8_t glass_counter   = 0;    // Monitor number of placed glasses (1 bit per glass)
     uint8_t cur_glass       = 0;    // Currently chosen glass for action
+
+    // Calibration variables
+    CalibrationStep cal_step = PREPARE;
+    bool cal_button_pressed = false;
 
     // Display flags
     bool display_glass_counter  = false;
@@ -113,6 +124,7 @@ public:
     void Update(void);
 
     void Calibrate(void);
+    void UpdateAdvancedCalibration(void);
     void ServeDrinks(void);
 };
 

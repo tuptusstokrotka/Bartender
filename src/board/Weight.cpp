@@ -16,32 +16,11 @@ void MyWeight::Calibrate(){
     // Set offset on init
     offset = myScale.get_value(5);
 }
-void MyWeight::Calibrate(uint8_t step){
-    switch(step){
-        case 0:{ // Get 1st raw reading
-            // remove weight //
-            // get raw reading for no weight
-            myScale.get_value(5);
-            break;
-        }
-        case 1:{ // Get 2nd raw reading
-            // place known weight //
-            // get raw reading for known weight
-            myScale.get_value(5);
-            break;
-        }
-        case 2:{ // Calculate scale factor
-            // (float) scale_factor = (expected delta) / (raw delta)
-            // (float) scale_factor = 100 * 1000 / (2nd_raw - 1st_raw); // x1000 cause the adc returns miligrams
-            myScale.set_scale(12345);
-            break;
-        }
-        case 3:{ // Tare the weight
-            // remove weight //
-            offset = myScale.get_value(5);
-            break;
-        }
-    }
+
+void MyWeight::SetFactor(float factor){
+    // if(factor > 2.0f)   //CHECK OUT OF RANGE
+    //     factor = 0.802f; // if factor is out of range
+    myScale.set_scale(factor);
 }
 
 long MyWeight::Measure(uint8_t samples){
@@ -62,4 +41,18 @@ long MyWeight::Measure(uint8_t samples){
 
 void MyWeight::Zero(){
     offset = myScale.get_value(1);
+}
+
+long MyWeight::GetRawReading(uint8_t samples) {
+    return myScale.get_value(samples);
+}
+
+float MyWeight::CalculateScaleFactor(long raw_empty, long raw_weight, long known_weight) {
+    float scale_factor = 0;
+    long raw_delta = raw_weight - raw_empty;
+    if (raw_delta > 0) {
+        scale_factor = (known_weight * 1000.0) / raw_delta; // Convert to mg for accuracy
+        myScale.set_scale(scale_factor);
+    }
+    return scale_factor;
 }

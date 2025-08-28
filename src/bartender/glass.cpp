@@ -21,7 +21,6 @@ long MyGlass::GetDifference(long volume){
 
 void MyGlass::Calibrate(void){
     beam->Calibrate();
-    // beam->Calibrate(step); // Advanced calibration - WIP
 }
 
 void MyGlass::StatusCheck(unsigned int volume){

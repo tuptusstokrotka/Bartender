@@ -17,6 +17,10 @@ void MyWeight::Calibrate(){
     offset = myScale.get_value(5);
 }
 
+void MyWeight::SetOffset(){
+    offset = myScale.get_value(5);
+}
+
 void MyWeight::SetFactor(float factor){
     // if(factor > 2.0f)   //CHECK OUT OF RANGE
     //     factor = 0.802f; // if factor is out of range

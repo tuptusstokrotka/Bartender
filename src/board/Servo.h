@@ -8,6 +8,8 @@
 
 #define OFFSET 0                // Offset from desired angle to actual angle - offset every set angle
 #define MAX_MOVE_TIME 1000      // How long the servo will block the program via Delay()
+#define SERVO_MIN 0
+#define SERVO_MAX 180
 
 class MyServo {
 private:

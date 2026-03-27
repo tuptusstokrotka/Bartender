@@ -17,7 +17,9 @@ void MyServo::MoveTo(int angle){
     servo.attach(SERVO_PIN_SIG);                // LET IT MOVE
 
     set_angle = angle;                          // Update the set angle
-    servo.write(angle + OFFSET);                // Set glass position
+    servo.write(                                // Set glass position
+        constrain(angle + OFFSET, SERVO_MIN, SERVO_MAX)
+    );
     delay(MAX_MOVE_TIME);                       // LITTLE DELAY TO SET SERVO
 
     servo.detach();                             // STOP JITTERING

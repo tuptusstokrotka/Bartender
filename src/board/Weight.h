@@ -20,6 +20,7 @@ public:
     ~MyWeight();
 
     void Calibrate();              // Fixed scale calibration - offset only
+    void SetOffset();
     void SetFactor(float factor);
     float CalculateScaleFactor(long raw_empty, long raw_weight, long known_weight);
 

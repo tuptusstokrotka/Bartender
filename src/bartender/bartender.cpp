@@ -73,15 +73,14 @@ void Bartender::SetNextGlass(void){
 }
 
 void Bartender::Init(void){
-    // Check the highest led index
+    // Get the highest led index and Initialize leds
     int8_t pixels = myGlasses.size();
-    float factor = EEPROM.read(EEPROM_FACTOR);
-    for(auto &glass : myGlasses){
-        pixels = (glass.GetLedIndex() > pixels) ? (glass.GetLedIndex() + 1) : pixels;
-        glass.SetFactor(factor);
-    }
     led = new MyLeds(pixels);
 
+    // load float from eeprom
+    float scale_factor = EEPROM.read(EEPROM_FACTOR);
+
+    // Calibrate
     DrawText("Calibration", 0); // Dummy text to show just after bootup
     Calibrate();
 }
@@ -320,16 +319,17 @@ void Bartender::ServeDrinks(void){
 }
 void Bartender::Calibrate(void){
     // Must set the led here - as hx711 is reading in blocking way
-    for(uint8_t i = 0; i < myGlasses.size(); i++) {
-        int8_t led_index = myGlasses[i].GetLedIndex();
+    for(auto &glass : myGlasses){
+        int8_t led_index = glass.GetLedIndex();
         led->SetGlass(led_index, _yellow);
 
-        myGlasses[i].Calibrate();
+        glass.SetOffset();
+        glass.SetFactor(scale_factor); // 2.15
+
         delay(100);
 
         led->SetGlass(led_index, _black);
     }
-
     SetState(idle);
 }
 

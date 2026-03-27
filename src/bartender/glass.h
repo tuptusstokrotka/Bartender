@@ -68,6 +68,7 @@ public:
      * @brief Calibrate strain gauge
      */
     void Calibrate(void);
+    void SetOffset(void);
 
     // Advanced calibration methods
     long GetRawReading(uint8_t samples = 5) { return beam->GetRawReading(samples); }

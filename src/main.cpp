@@ -1,19 +1,13 @@
 #include "pin_config.h"
+#include "debug.h"
 #include "bartender/bartender.h"
 
 Bartender* ShotDoser = nullptr;
 
-int freeMemory() {
-  extern int __heap_start, *__brkval;
-  int v;
-  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
-}
-
 void setup() {
   /* SERIAL COM INIT */
-  // Serial.begin(115200);
-  // Serial.println("hello world");
-  // Serial.print("Initial Free RAM: "); Serial.println(freeMemory()); //DEBUG
+  DEBUG_SERIAL;
+  DEBUG_PRINTLN("hello world");
 
   ShotDoser = new Bartender();
 
@@ -25,10 +19,7 @@ void setup() {
   ShotDoser->AddGlass(KZ3_DOUT, KZ3_SCK, KZ3_ANGLE);
 
   ShotDoser->Init();
-
-  // Serial.print("Free RAM: "); Serial.println(freeMemory()); //DEBUG
 }
 void loop() {
   ShotDoser->Update();
-  // Serial.print("Free RAM: "); Serial.println(freeMemory()); //DEBUG
 }

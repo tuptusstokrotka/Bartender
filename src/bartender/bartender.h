@@ -15,7 +15,7 @@
 #include "board/Encoder.h"
 #include "board/Pump.h"
 
-#define STOP_ML_OFFSET   (long)2        // Offset from filled volume to stop pouring
+#define STOP_ML_OFFSET   (long)0        // Offset from filled volume to stop pouring
 #define SERVO_PUMP_DELAY delay(500);    //DEBUG Delay between powering servo & pump
 
 #define UPDATE_INTERVAL(ms)     static unsigned long last_update = 0;  \
@@ -60,6 +60,7 @@ private:
     int32_t volume          = 0;    // Currently set desired volume
     uint8_t glass_counter   = 0;    // Monitor number of placed glasses (1 bit per glass)
     uint8_t cur_glass       = 0;    // Currently chosen glass for action
+    float scale_factor      = 1.0;  // Scale factor
 
     // Calibration variables
     CalibrationStep cal_step = PREPARE;

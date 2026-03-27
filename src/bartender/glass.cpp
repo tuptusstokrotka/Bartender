@@ -22,6 +22,9 @@ long MyGlass::GetDifference(long volume){
 void MyGlass::Calibrate(void){
     beam->Calibrate();
 }
+void MyGlass::SetOffset(void){
+    beam->SetOffset();
+}
 
 void MyGlass::StatusCheck(unsigned int volume){
     glass_brutto = beam->Measure(1);

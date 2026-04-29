@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Bart</title>
+  <!-- bart-setpoint {pourMl}, bart-display-weight {show}, bart-normal-mode {}, bart-calibrate. Bridge: ?esp= (POST /esp/setpoint) -->
+  <style>
+    :root {
+      --bg: #0a0a0b;
+      --panel: rgba(14, 14, 16, 0.98);
+      --track: rgba(255, 255, 255, 0.08);
+      --ink: rgba(255, 255, 255, 0.92);
+      --ink-soft: rgba(255, 255, 255, 0.45);
+      --ink-hint: rgba(255, 255, 255, 0.38);
+      --rim: rgba(255, 255, 255, 0.06);
+      --accent: #06b6d4;
+      --accent-dark: #0891b2;
+      --accent-contrast: #ffffff;
+      --fill-pct-full: #34d399;
+      --pour: #38bdf8;
+      --warn: #fbbf24;
+      --err: #f87171;
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+      --tab-h: 3.25rem;
+      --safe-b: env(safe-area-inset-bottom, 0px);
+      --safe-t: env(safe-area-inset-top, 0px);
+      --panel-pad: clamp(12px, 3.5vw, 18px);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: var(--font);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+      display: flex;
+      flex-direction: column;
+      padding-top: var(--safe-t);
+      background: var(--bg);
+    }
+    .app {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      width: 100%;
+      max-width: none;
+      margin: 0;
+      padding: var(--panel-pad);
+      padding-bottom: calc(var(--tab-h) + var(--safe-b) + 12px);
+    }
+    header.top {
+      flex-shrink: 0;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem 1rem;
+      margin-bottom: 0.75rem;
+      padding: 0 0 12px;
+      border-bottom: 1px solid var(--rim);
+      background: transparent;
+    }
+    header.top h1 {
+      font-size: clamp(1rem, 3.2vw, 1.2rem);
+      font-weight: 600;
+      margin: 0;
+      color: rgba(255, 255, 255, 0.75);
+      letter-spacing: 0;
+    }
+    .state-pill {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.07);
+      color: var(--ink-soft);
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .state-pill.idle { color: #34d399; border-color: rgba(52, 211, 153, 0.35); }
+    .state-pill.serving { color: var(--accent); border-color: rgba(6, 182, 212, 0.35); }
+    .state-pill.calibration { color: var(--warn); }
+    .state-pill.error { color: var(--err); }
+    .panels {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    [data-panel] { display: none; }
+    [data-panel].on { display: block; }
+    .panel-inner { padding-bottom: 0.5rem; }
+    .empty-hint {
+      text-align: center;
+      color: var(--ink-soft);
+      font-size: 0.875rem;
+      padding: 2rem 1rem;
+    }
+    .serve-wrap {
+      background: var(--panel);
+      border: 1px solid var(--rim);
+      border-radius: 16px;
+      padding: 14px 14px 16px;
+    }
+    .serve-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      padding: 0;
+    }
+    .setpoint-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem 0.6rem;
+      font-size: 0.82rem;
+      color: var(--ink-soft);
+    }
+    .setpoint-lbl { font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-size: 0.68rem; }
+    .setpoint-unit { display: inline-flex; align-items: center; gap: 0.35rem; }
+    #setpointInput {
+      width: 4.25rem;
+      padding: 0.45rem 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-align: center;
+      border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+    #setpointInput:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .serve-all-btn {
+      min-height: 3.15rem;
+      padding: 0.65rem 1.35rem;
+      font-weight: 700;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      border-radius: 9999px;
+      border: none;
+      color: var(--accent-contrast);
+      background: linear-gradient(180deg, #5eead4 0%, var(--accent) 42%, var(--accent-dark) 100%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 3px 14px rgba(6, 182, 212, 0.35);
+      cursor: pointer;
+      transition: filter 0.2s, transform 0.1s;
+    }
+    .serve-all-btn:hover:not(:disabled) {
+      filter: brightness(1.12);
+    }
+    .serve-all-btn:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+    .serve-list-wrap {
+      position: relative;
+      margin: 0 -2px;
+      padding: 12px 10px 10px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .serve-list-wrap::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+      background-size: 16px 16px;
+      pointer-events: none;
+      opacity: 0.85;
+    }
+    .serve-list-head {
+      position: relative;
+      z-index: 1;
+      margin-bottom: 12px;
+    }
+    .serve-list-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.92);
+    }
+    .serve-list-hint {
+      margin: 6px 0 0;
+      font-size: 0.75rem;
+      line-height: 1.4;
+      color: var(--ink-hint);
+    }
+    .serve-list-foot {
+      position: relative;
+      z-index: 1;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--track);
+      font-size: 0.72rem;
+      color: var(--ink-hint);
+      line-height: 1.35;
+    }
+    .slot-grid {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+    }
+    .slot-card {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.06);
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .slot-card:focus-within {
+      outline: none;
+      border-color: rgba(6, 182, 212, 0.35);
+    }
+    .slot-card.is-empty {
+      border-style: dashed;
+      border-color: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .slot-row {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 14px;
+      flex: 1;
+      min-width: 0;
+    }
+    .glass-shot-wrap {
+      width: 59px;
+      height: 61px;
+      flex-shrink: 0;
+    }
+    .slot-card:not(.is-empty) .glass-shot-wrap {
+      filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 1px rgba(255, 255, 255, 0.22));
+    }
+    .slot-card.is-full:not(.is-empty) .glass-shot-wrap {
+      filter: drop-shadow(0 0 14px rgba(52, 211, 153, 0.4)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55));
+    }
+    .slot-card.is-empty .glass-shot-wrap {
+      opacity: 0.38;
+    }
+    .glass-shot-svg {
+      display: block;
+      width: 59px;
+      height: auto;
+    }
+    .glass-shot-fill {
+      transition: y 0.28s ease, height 0.28s ease;
+    }
+    .slot-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+      flex: 1;
+    }
+    .slot-n {
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--ink-soft);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .slot-n b {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.88);
+      letter-spacing: 0;
+    }
+    .slot-readout {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.2;
+    }
+    .slot-readout.is-pct {
+      color: rgba(255, 255, 255, 0.94);
+    }
+    .slot-card.is-full .slot-readout.is-pct {
+      color: var(--fill-pct-full);
+    }
+    .slot-card.is-empty .slot-readout { color: var(--ink-soft); font-weight: 600; font-size: 1rem; }
+    .slot-card.is-empty .slot-readout.is-pct { color: var(--ink-soft); }
+    .slot-sub {
+      font-size: 0.72rem;
+      line-height: 1.35;
+      color: var(--ink-hint);
+    }
+    .slot-serve {
+      flex-shrink: 0;
+      align-self: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 4.35rem;
+      margin: 0;
+      padding: 0 0.55rem;
+      min-height: 2rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      border-radius: 9999px;
+      border: none;
+      color: var(--accent-contrast);
+      background: linear-gradient(180deg, #5eead4 0%, var(--accent) 42%, var(--accent-dark) 100%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 2px 8px rgba(6, 182, 212, 0.25);
+      cursor: pointer;
+      transition: filter 0.2s, transform 0.1s;
+    }
+    .slot-serve:hover:not(:disabled) { filter: brightness(1.08); }
+    .slot-serve:active:not(:disabled) { transform: scale(0.98); }
+    .slot-serve:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      filter: none;
+    }
+    button {
+      font: inherit;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      padding: 0.5rem 0.85rem;
+      border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.07);
+      color: rgba(255, 255, 255, 0.82);
+      cursor: pointer;
+      min-height: 2.65rem;
+      touch-action: manipulation;
+      transition: filter 0.2s, background 0.15s;
+    }
+    button:hover:not(:disabled) { filter: brightness(1.08); }
+    button.primary {
+      border-radius: 9999px;
+      color: var(--accent-contrast);
+      border: none;
+      min-height: 2rem;
+      padding: 0 0.85rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      background: linear-gradient(180deg, #5eead4 0%, var(--accent) 42%, var(--accent-dark) 100%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 2px 8px rgba(6, 182, 212, 0.25);
+    }
+    .btn-ota {
+      width: 100%;
+      max-width: 20rem;
+      margin-top: 0.25rem;
+    }
+    button.primary:hover:not(:disabled) { filter: brightness(1.08); }
+    button:disabled { opacity: 0.48; cursor: not-allowed; }
+    input[type="number"], input[type="text"] {
+      width: 100%;
+      max-width: 12rem;
+      padding: 0.45rem 0.55rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--ink);
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+    input[type="number"]:focus, input[type="text"]:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .cal-section {
+      background: var(--panel);
+      border: 1px solid var(--rim);
+      border-radius: 18px;
+      padding: 0.9rem 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .cal-section h2 {
+      margin: 0 0 0.65rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .steps-nav { display: flex; gap: 0.35rem; margin-bottom: 0.85rem; }
+    .steps-nav span {
+      flex: 1;
+      height: 4px;
+      border-radius: 3px;
+      background: rgba(0, 0, 0, 0.35);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+    }
+    .steps-nav span.on {
+      background: var(--accent);
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.35);
+    }
+    .cal-section p {
+      margin: 0 0 0.6rem;
+      font-size: 0.8125rem;
+      color: var(--ink-soft);
+      line-height: 1.45;
+    }
+    .cal-intro-hint {
+      margin: 0 0 0.85rem;
+      font-size: 0.8125rem;
+      line-height: 1.45;
+      color: var(--ink-hint);
+    }
+    button.primary.cal-finish {
+      border-radius: 9999px;
+      border: none;
+      background: linear-gradient(180deg, #6ee7b7 0%, #34d399 40%, #059669 100%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 2px 8px rgba(52, 211, 153, 0.28);
+    }
+    button.primary.cal-finish:hover:not(:disabled) { filter: brightness(1.06); }
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.65rem;
+      margin-bottom: 0.65rem;
+    }
+    @media (max-width: 400px) { .field-row { grid-template-columns: 1fr; } }
+    .field label {
+      display: block;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--ink-soft);
+      margin-bottom: 0.25rem;
+    }
+    .field input { max-width: none; width: 100%; }
+    .cal-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; align-items: center; }
+    button.cal-nav-btn {
+      min-width: 4.35rem;
+      min-height: 2rem;
+      padding: 0 0.55rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      border-radius: 9999px;
+    }
+    .factor-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-end; margin-top: 0.5rem; }
+    .factor-row .field { flex: 1; min-width: 8rem; }
+    .suggested { font-size: 0.75rem; color: var(--ink-soft); margin-top: 0.35rem; }
+    .adv-list { font-size: 0.875rem; line-height: 1.65; color: var(--ink-soft); }
+    .adv-list dt { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.75rem; }
+    .adv-list dt:first-child { margin-top: 0; }
+    .adv-list dd { margin: 0.15rem 0 0; color: var(--ink); word-break: break-all; }
+    .adv-list a { color: var(--pour); font-weight: 600; }
+    .tabbar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 40;
+      display: flex;
+      background: var(--panel);
+      border-top: 1px solid var(--rim);
+      padding-bottom: var(--safe-b);
+      min-height: calc(var(--tab-h) + var(--safe-b));
+    }
+    .tabbar button.tab {
+      flex: 1;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      color: var(--ink-soft);
+      font-size: clamp(0.7rem, 2.8vw, 0.8125rem);
+      font-weight: 700;
+      min-height: var(--tab-h);
+      padding: 0.25rem 0.35rem;
+      box-shadow: none;
+    }
+    .tabbar button.tab.on {
+      color: var(--accent);
+      box-shadow: inset 0 -3px 0 var(--accent);
+      background: transparent;
+    }
+    .tabbar button.tab:hover { background: rgba(255, 255, 255, 0.04); }
+    .dash { color: var(--ink-soft); }
+    .esp-link-hint { margin-top: 0.35rem; font-size: 0.78rem; }
+    .esp-link-hint code { font-size: 0.72rem; background: rgba(255, 255, 255, 0.08); padding: 0.1rem 0.25rem; border-radius: 4px; border: 1px solid var(--rim); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <h1>Bartender</h1>
+      <span class="state-pill" id="statePill" title="Bartender state">—</span>
+    </header>
+    <div class="panels">
+      <div class="panel-inner" data-panel="serve" id="panelServe"></div>
+      <div class="panel-inner" data-panel="cal" id="panelCal"></div>
+      <div class="panel-inner" data-panel="adv" id="panelAdv"></div>
+    </div>
+  </div>
+  <nav class="tabbar" aria-label="Main">
+    <button type="button" class="tab on" data-tab="serve" aria-selected="true">Serve</button>
+    <button type="button" class="tab" data-tab="cal" aria-selected="false">Calibration</button>
+    <button type="button" class="tab" data-tab="adv" aria-selected="false">Advanced</button>
+  </nav>
+
+  <script>
+(function () {
+  'use strict';
+
+  /**
+   * Glass row from ESP: tareG, netG per slot; optional occupied (bool).
+   * If occupied omitted: no glass when tareG and netG are both null/undefined.
+   */
+  /** @typedef {{ id:number, tareG:*, netG:*, occupied?:boolean|null }} GlassRow */
+
+  var state = {
+    glassCount: null,
+    calibrationFactor: null,
+    pourMl: null,
+    bartenderState: null,
+    glasses: [],
+    softwareVersion: null,
+    commitHash: null,
+    author: null
+  };
+
+  var calStep = 0;
+  var calProcedureStarted = false;
+  var calInputs = { emptyBeamG: '', knownWeightG: '', knownMeasuredG: '' };
+  var factorDraft = '';
+  var factorDirty = false;
+  var panels = { serve: null, cal: null, adv: null };
+  var activeTab = 'serve';
+  var espBaseUrl = (function () {
+    var e = new URLSearchParams(location.search).get('esp');
+    return e ? String(e).replace(/\/$/, '') : '';
+  })();
+  var serveBarBound = false;
+  var setpointEspTimer = null;
+
+  function espPath(suffix) {
+    return espBaseUrl + suffix;
+  }
+
+  function pushPourMlToEsp(ml) {
+    if (!espBaseUrl || ml == null || !isFinite(ml) || !(ml > 0)) return;
+    fetch(espPath('/esp/setpoint'), {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pourMl: ml })
+    }).catch(function () {});
+  }
+
+  function el(id) { return document.getElementById(id); }
+
+  function parseLocaleFloat(raw) {
+    if (raw == null) return NaN;
+    var s = String(raw).trim().replace(',', '.');
+    if (s === '') return NaN;
+    var v = parseFloat(s);
+    return isFinite(v) ? v : NaN;
+  }
+
+  function fmt(v) {
+    if (v === null || v === undefined || v === '') return '—';
+    if (typeof v === 'number' && !isFinite(v)) return '—';
+    return String(v);
+  }
+
+  function inferOccupied(row) {
+    if (!row || typeof row !== 'object') return false;
+    var t = row.tareG;
+    if (t != null && isFinite(Number(t)) && Math.abs(Number(t)) < 0.01) return false;
+    if (typeof row.occupied === 'boolean') return row.occupied;
+    var n = row.netG;
+    if (t == null && n == null) return false;
+    return true;
+  }
+
+  function fillPercent(g) {
+    if (!inferOccupied(g) || state.pourMl == null || !(state.pourMl > 0)) return null;
+    if (g.netG == null) return null;
+    var net = Number(g.netG);
+    if (!isFinite(net)) return null;
+    var p = (net / state.pourMl) * 100;
+    return Math.max(0, Math.min(100, Math.round(p)));
+  }
+
+  function statePillClass(s) {
+    var u = (s || '').toLowerCase();
+    if (u.indexOf('idle') >= 0) return 'state-pill idle';
+    if (u.indexOf('serv') >= 0) return 'state-pill serving';
+    if (u.indexOf('calib') >= 0) return 'state-pill calibration';
+    if (u.indexOf('err') >= 0 || u.indexOf('fault') >= 0) return 'state-pill error';
+    return 'state-pill';
+  }
+
+  function resizeGlasses(n) {
+    if (n == null || !isFinite(n) || n < 1) {
+      state.glasses = [];
+      return;
+    }
+    n = Math.min(64, Math.floor(Number(n)));
+    var cur = state.glasses.length;
+    if (n > cur) {
+      for (var i = cur; i < n; i++) {
+        state.glasses.push({ id: i, tareG: null, netG: null, occupied: false });
+      }
+    } else {
+      state.glasses = state.glasses.slice(0, n);
+    }
+    for (var j = 0; j < state.glasses.length; j++) state.glasses[j].id = j;
+  }
+
+  function applyIncoming(payload) {
+    if (!payload || typeof payload !== 'object') return;
+
+    if ('glassCount' in payload && payload.glassCount != null) {
+      state.glassCount = Number(payload.glassCount);
+      resizeGlasses(state.glassCount);
+    }
+    if ('calibrationFactor' in payload) {
+      if (payload.calibrationFactor == null || payload.calibrationFactor === '') {
+        state.calibrationFactor = null;
+        if (!factorDirty) factorDraft = '';
+      } else {
+        state.calibrationFactor = Number(payload.calibrationFactor);
+        if (!factorDirty) factorDraft = String(state.calibrationFactor);
+      }
+    }
+    if ('pourMl' in payload) {
+      if (payload.pourMl == null) state.pourMl = null;
+      else state.pourMl = Number(payload.pourMl);
+    }
+    if ('targetPourMl' in payload && !('pourMl' in payload)) {
+      state.pourMl = payload.targetPourMl == null ? null : Number(payload.targetPourMl);
+    }
+    if ('bartenderState' in payload) state.bartenderState = payload.bartenderState;
+    if ('softwareVersion' in payload) state.softwareVersion = payload.softwareVersion;
+    if ('commitHash' in payload) state.commitHash = payload.commitHash;
+    if ('author' in payload) state.author = payload.author;
+
+    if (Array.isArray(payload.glasses)) {
+      var lim = Math.min(payload.glasses.length, state.glasses.length);
+      for (var i = 0; i < lim; i++) {
+        var row = payload.glasses[i];
+        var g = state.glasses[i];
+        if ('occupied' in row) g.occupied = row.occupied;
+        if ('tareG' in row) g.tareG = row.tareG;
+        if ('netG' in row) g.netG = row.netG;
+        if (g.tareG == null && g.netG == null) g.occupied = false;
+        if (g.tareG != null && isFinite(Number(g.tareG)) && Math.abs(Number(g.tareG)) < 0.01) g.occupied = false;
+      }
+    }
+
+    refreshFromDevice();
+  }
+
+  window.BartApplyState = applyIncoming;
+
+  function renderStatePill() {
+    var pill = el('statePill');
+    var t = state.bartenderState != null ? String(state.bartenderState) : '—';
+    pill.textContent = t;
+    pill.className = statePillClass(t);
+    pill.title = 'Bartender state: ' + t;
+  }
+
+  function bindServeBarOnce() {
+    if (serveBarBound) return;
+    var inp = el('setpointInput');
+    var allBtn = el('btnServeAll');
+    if (!inp || !allBtn) return;
+    serveBarBound = true;
+    function pushSetpoint() {
+      var v = parseLocaleFloat(inp.value);
+      if (!isFinite(v) || v <= 0) return;
+      if (setpointEspTimer) {
+        clearTimeout(setpointEspTimer);
+        setpointEspTimer = null;
+      }
+      state.pourMl = v;
+      window.dispatchEvent(new CustomEvent('bart-setpoint', { detail: { pourMl: v } }));
+      pushPourMlToEsp(v);
+      renderServeGrid();
+    }
+    inp.addEventListener('input', function () {
+      var v = parseLocaleFloat(inp.value);
+      if (isFinite(v) && v > 0) {
+        state.pourMl = v;
+        renderServeGrid();
+        if (setpointEspTimer) clearTimeout(setpointEspTimer);
+        setpointEspTimer = setTimeout(function () {
+          setpointEspTimer = null;
+          var cur = parseLocaleFloat(inp.value);
+          if (isFinite(cur) && cur > 0) pushPourMlToEsp(cur);
+        }, 350);
+      }
+    });
+    inp.addEventListener('change', pushSetpoint);
+    inp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        pushSetpoint();
+        inp.blur();
+      }
+    });
+    allBtn.addEventListener('click', onServeAll);
+  }
+
+  function updateServeBarChrome() {
+    var inp = el('setpointInput');
+    var btn = el('btnServeAll');
+    var lock = serveLocked();
+    if (btn) btn.disabled = lock;
+    if (inp && document.activeElement !== inp) {
+      var v = state.pourMl != null && isFinite(state.pourMl) ? String(state.pourMl) : '';
+      if (inp.value !== v) inp.value = v;
+    }
+  }
+
+  function slotSubLine(g, occ) {
+    if (occ) {
+      return 'Tare ' + fmt(g.tareG) + ' g · Net ' + fmt(g.netG) + ' g';
+    }
+    return 'No glass on this pad';
+  }
+
+  function vodkaShotLiquidGeom(fillH) {
+    var innerTop = 5.5;
+    var innerBottom = 52.75;
+    var innerLeft = 9.75;
+    var innerW = 36.5;
+    var innerH = innerBottom - innerTop;
+    var hPx = Math.round((fillH / 100) * innerH * 100) / 100;
+    var yPx = Math.round((innerBottom - hPx) * 100) / 100;
+    return { hPx: hPx, yPx: yPx, x: innerLeft, w: innerW };
+  }
+
+  function buildGlassShotSvg(i, fillH) {
+    var gid = 'vshot-grad-' + i;
+    var cid = 'vshot-clip-' + i;
+    var g = vodkaShotLiquidGeom(fillH);
+    return (
+      '<div class="glass-shot-wrap" aria-hidden="true">' +
+      '<svg class="glass-shot-svg" viewBox="0 0 56 58" width="59" height="61" xmlns="http://www.w3.org/2000/svg">' +
+      '<defs>' +
+      '<linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0%" stop-color="#e2edf8" stop-opacity="0.5"/>' +
+      '<stop offset="100%" stop-color="#283445" stop-opacity="0.88"/></linearGradient>' +
+      '<clipPath id="' + cid + '"><path d="M 9.75 5.5 L 46.25 5.5 L 42.75 52.75 L 13.25 52.75 Z"/></clipPath>' +
+      '</defs>' +
+      '<path d="M 7 2.5 L 49 2.5 L 44.5 55 L 11.5 55 Z" fill="url(#' + gid + ')" stroke="rgba(255,255,255,0.5)" stroke-width="1.08" stroke-linejoin="round"/>' +
+      '<rect class="glass-shot-fill" clip-path="url(#' + cid + ')" x="' + g.x + '" y="' + g.yPx + '" width="' + g.w + '" height="' + g.hPx + '" fill="rgba(252,252,255,0.94)"/>' +
+      '</svg></div>'
+    );
+  }
+
+  function buildServeSlotArticle(i, g, lockServe) {
+    var occ = inferOccupied(g);
+    var fp = fillPercent(g);
+    var pctStr = occ ? (fp != null ? fp + '%' : '·') : '—';
+    var fillH = fp != null ? fp : 0;
+    var cls = 'slot-card' + (occ ? '' : ' is-empty') + (fp != null && fp >= 100 ? ' is-full' : '');
+    var sub = slotSubLine(g, occ);
+    var roCls = 'slot-readout' + (occ && fp != null ? ' is-pct' : '');
+    return '<article class="' + cls + '" title="' + escapeHtml(sub) + '" tabindex="0">' +
+      '<div class="slot-row">' +
+      buildGlassShotSvg(i, fillH) +
+      '<div class="slot-meta">' +
+      '<span class="slot-n">Glass <b>' + (i + 1) + '</b></span>' +
+      '<span class="' + roCls + '">' + escapeHtml(pctStr) + '</span>' +
+      '<span class="slot-sub">' + escapeHtml(sub) + '</span>' +
+      '</div></div>' +
+      '<button type="button" class="slot-serve serve-one" data-idx="' + i + '"' + (lockServe ? ' disabled' : '') + '>Serve</button>' +
+      '</article>';
+  }
+
+  function patchServeSlot(art, g, lockServe) {
+    var occ = inferOccupied(g);
+    var fp = fillPercent(g);
+    var pctStr = occ ? (fp != null ? fp + '%' : '·') : '—';
+    var fillH = fp != null ? fp : 0;
+    var cls = 'slot-card' + (occ ? '' : ' is-empty') + (fp != null && fp >= 100 ? ' is-full' : '');
+    if (art.className !== cls) art.className = cls;
+    var sub = slotSubLine(g, occ);
+    if (art.getAttribute('title') !== sub) art.setAttribute('title', sub);
+    var liq = art.querySelector('.glass-shot-fill');
+    if (liq) {
+      var geo = vodkaShotLiquidGeom(fillH);
+      if (liq.getAttribute('height') !== String(geo.hPx)) liq.setAttribute('height', String(geo.hPx));
+      if (liq.getAttribute('y') !== String(geo.yPx)) liq.setAttribute('y', String(geo.yPx));
+      if (liq.getAttribute('x') !== String(geo.x)) liq.setAttribute('x', String(geo.x));
+      if (liq.getAttribute('width') !== String(geo.w)) liq.setAttribute('width', String(geo.w));
+    }
+    var subEl = art.querySelector('.slot-sub');
+    if (subEl && subEl.textContent !== sub) subEl.textContent = sub;
+    var ro = art.querySelector('.slot-readout');
+    if (ro) {
+      if (ro.textContent !== pctStr) ro.textContent = pctStr;
+      ro.classList.toggle('is-pct', !!(occ && fp != null));
+    }
+    var btn = art.querySelector('.serve-one');
+    if (btn && btn.disabled !== lockServe) btn.disabled = lockServe;
+  }
+
+  function renderServeGrid() {
+    var grid = el('serveGrid');
+    if (!grid) return;
+    var lockServe = serveLocked();
+    var n = state.glasses.length;
+    var first = grid.firstElementChild;
+    var structureOk = !!(first && first.querySelector('.glass-shot-fill') && first.querySelector('.slot-sub'));
+    if (grid.children.length !== n || !structureOk) {
+      var html = '';
+      for (var i = 0; i < n; i++) {
+        html += buildServeSlotArticle(i, state.glasses[i], lockServe);
+      }
+      grid.innerHTML = html;
+      var btns = grid.querySelectorAll('.serve-one');
+      for (var b = 0; b < btns.length; b++) {
+        btns[b].addEventListener('click', onServeOne);
+      }
+      return;
+    }
+    for (var j = 0; j < n; j++) {
+      patchServeSlot(grid.children[j], state.glasses[j], lockServe);
+    }
+  }
+
+  function renderServe() {
+    var root = panels.serve;
+    if (!state.glassCount || state.glasses.length === 0) {
+      serveBarBound = false;
+      var hint = !espBaseUrl
+        ? '<p class="empty-hint esp-link-hint">Add <code>?esp=http://127.0.0.1:9000</code> and run <code>python esp_sim.py -g 4 -f 1.25 -p 9000</code>.</p>'
+        : '';
+      root.innerHTML = '<p class="empty-hint">Waiting for data…</p>' + hint;
+      return;
+    }
+    if (el('serveWrap') && !el('serveWrap').querySelector('.serve-list-wrap')) {
+      serveBarBound = false;
+      root.innerHTML = '';
+    }
+    if (!el('serveWrap')) {
+      root.innerHTML =
+        '<div id="serveWrap" class="serve-wrap">' +
+        '<div class="serve-bar" id="serveBar">' +
+        '<label class="setpoint-wrap" for="setpointInput"><span class="setpoint-lbl">Setpoint</span>' +
+        '<span class="setpoint-unit"><input type="number" id="setpointInput" min="1" max="999" step="1" inputmode="decimal" /> ml</span></label>' +
+        '<button type="button" class="serve-all-btn" id="btnServeAll">Serve all</button>' +
+        '</div>' +
+        '<div class="serve-list-wrap">' +
+        '<div class="serve-list-head">' +
+        '<h2 class="serve-list-title">Glasses</h2>' +
+        '<p class="serve-list-hint">Side view is schematic. Fill % compares net mass to your setpoint (ml).</p>' +
+        '</div>' +
+        '<div class="slot-grid" id="serveGrid"></div>' +
+        '<p class="serve-list-foot">One tap = this glass only. <strong>Serve all</strong> uses every slot that reports a glass.</p>' +
+        '</div></div>';
+      bindServeBarOnce();
+    }
+    updateServeBarChrome();
+    renderServeGrid();
+  }
+
+  function serveLocked() {
+    var s = state.bartenderState;
+    if (s == null) return false;
+    return String(s).toLowerCase().indexOf('idle') < 0;
+  }
+
+  function onServeOne(ev) {
+    var idx = parseInt(ev.currentTarget.getAttribute('data-idx'), 10);
+    window.dispatchEvent(new CustomEvent('bart-serve', { detail: { glassIndex: idx } }));
+  }
+
+  function onServeAll() {
+    window.dispatchEvent(new CustomEvent('bart-serve-all', { detail: { ServeAll: true } }));
+  }
+
+  function suggestedFactor() {
+    var empty = parseLocaleFloat(calInputs.emptyBeamG);
+    var known = parseLocaleFloat(calInputs.knownWeightG);
+    var measured = parseLocaleFloat(calInputs.knownMeasuredG);
+    if (![empty, known, measured].every(isFinite)) return null;
+    var den = measured - empty;
+    if (den === 0 || !isFinite(den)) return null;
+    var f = known / den;
+    return isFinite(f) ? f : null;
+  }
+
+  function renderCalPanel() {
+    var root = panels.cal;
+    var sf = suggestedFactor();
+    var sfStr = sf != null ? String(sf) : '—';
+    var devFactor = state.calibrationFactor != null && isFinite(state.calibrationFactor)
+      ? String(state.calibrationFactor) : '—';
+
+    var procSection =
+      '<div class="cal-section">' +
+      '<h2>Calibration procedure</h2>';
+    if (calProcedureStarted) {
+      procSection +=
+        '<div class="steps-nav" id="calStepsNav"></div>' +
+        '<div id="calStepBody"></div>' +
+        '<div class="cal-actions">' +
+        '<button type="button" class="cal-nav-btn" id="calBack">Back</button>' +
+        '<button type="button" class="cal-nav-btn primary" id="calNext">Next</button>' +
+        '</div>';
+    } else {
+      procSection +=
+        '<p class="cal-intro-hint">Switch the device to its live-weight screen, then run the three calibration steps.</p>' +
+        '<button type="button" class="primary" id="btnCalBegin">Begin</button>';
+    }
+    procSection += '</div>';
+
+    root.innerHTML =
+      '<div class="cal-section">' +
+      '<h2>Calibration factor</h2>' +
+      '<p>Current value from device: <span class="dash" id="devFactorDisp">' + escapeHtml(devFactor) + '</span>. Edit below or compute from the procedure, then apply.</p>' +
+      '<div class="factor-row">' +
+      '<div class="field"><label>Factor</label><input type="text" inputmode="decimal" id="factorInput" autocomplete="off"></div>' +
+      '</div>' +
+      '<p class="suggested" id="suggestedLine">Suggested from procedure: ' + escapeHtml(sfStr) + '</p>' +
+      '<div class="cal-actions">' +
+      '<button type="button" id="btnUseSuggested"' + (sf == null ? ' disabled' : '') + '>Use suggested</button>' +
+      '<button type="button" class="primary" id="btnApplyFactor">Apply factor</button>' +
+      '</div></div>' +
+      procSection;
+
+    var fi = el('factorInput');
+    fi.value = factorDraft !== '' ? factorDraft : (state.calibrationFactor != null ? String(state.calibrationFactor) : '');
+    fi.addEventListener('input', function () {
+      factorDraft = fi.value;
+      factorDirty = true;
+    });
+
+    el('btnUseSuggested').addEventListener('click', function () {
+      var cur = suggestedFactor();
+      if (cur == null) return;
+      fi.value = String(cur);
+      factorDraft = fi.value;
+      factorDirty = true;
+    });
+    el('btnApplyFactor').addEventListener('click', function () {
+      var v = parseLocaleFloat(fi.value);
+      if (!isFinite(v)) return;
+      window.dispatchEvent(new CustomEvent('bart-calibration-factor', { detail: { factor: v } }));
+      factorDirty = false;
+      state.calibrationFactor = v;
+      factorDraft = String(v);
+    });
+
+    if (!calProcedureStarted) {
+      el('btnCalBegin').addEventListener('click', function () {
+        window.dispatchEvent(new CustomEvent('bart-display-weight', { detail: { show: true } }));
+        if (espBaseUrl) {
+          fetch(espPath('/esp/display-weight'), {
+            method: 'POST',
+            mode: 'cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ show: true })
+          }).catch(function () {});
+        }
+        calProcedureStarted = true;
+        calStep = 0;
+        renderCalPanel();
+      });
+      updateSuggestedUi();
+      return;
+    }
+
+    var stepsNav = el('calStepsNav');
+    var stepBody = el('calStepBody');
+    stepsNav.innerHTML = '';
+    for (var s = 0; s < 3; s++) {
+      var sp = document.createElement('span');
+      if (s <= calStep) sp.className = 'on';
+      stepsNav.appendChild(sp);
+    }
+
+    if (calStep === 0) {
+      stepBody.innerHTML =
+        '<p>Step 1 — Empty beam. Nothing on the load cell; enter the measured reading (g).</p>' +
+        '<div class="field"><label>Measured (g)</label><input type="number" step="any" id="calEmptyBeam"></div>';
+    } else if (calStep === 1) {
+      stepBody.innerHTML =
+        '<p>Step 2 — Known weight. Enter the reference mass you will place on the beam (g).</p>' +
+        '<div class="field"><label>Known weight (g)</label><input type="number" step="any" id="calKnownWeight"></div>';
+    } else {
+      stepBody.innerHTML =
+        '<p>Step 3 — With that known weight on the beam, enter the measured reading (g). Then review the suggested factor above and Apply.</p>' +
+        '<div class="field"><label>Measured with load (g)</label><input type="number" step="any" id="calKnownMeasured"></div>';
+    }
+
+    function bindCalField(input, key) {
+      if (!input) return;
+      input.value = calInputs[key];
+      input.addEventListener('input', function () {
+        calInputs[key] = input.value;
+        updateSuggestedUi();
+        updateCalNextDisabled();
+      });
+    }
+    bindCalField(el('calEmptyBeam'), 'emptyBeamG');
+    bindCalField(el('calKnownWeight'), 'knownWeightG');
+    bindCalField(el('calKnownMeasured'), 'knownMeasuredG');
+
+    el('calBack').style.display = calStep === 0 ? 'none' : 'inline-block';
+    var nextBtn = el('calNext');
+    nextBtn.textContent = calStep < 2 ? 'Next' : 'Finish';
+    nextBtn.className = calStep === 2 ? 'cal-nav-btn primary cal-finish' : 'cal-nav-btn primary';
+    el('calBack').onclick = function () {
+      readCalInputsFromDom();
+      if (calStep === 0) return;
+      calStep--;
+      renderCalPanel();
+    };
+    nextBtn.onclick = function () {
+      readCalInputsFromDom();
+      if (!calCurrentStepValueValid()) return;
+      if (calStep < 2) { calStep++; renderCalPanel(); }
+      else {
+        window.dispatchEvent(new CustomEvent('bart-calibrate', {
+          detail: {
+            emptyBeamMeasuredG: calInputs.emptyBeamG,
+            knownWeightG: calInputs.knownWeightG,
+            knownWeightOnBeamMeasuredG: calInputs.knownMeasuredG,
+            suggestedFactor: suggestedFactor()
+          }
+        }));
+        window.dispatchEvent(new CustomEvent('bart-normal-mode', { detail: {} }));
+        if (espBaseUrl) {
+          fetch(espPath('/esp/normal-mode'), {
+            method: 'POST',
+            mode: 'cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ normal: true })
+          }).catch(function () {});
+        }
+        calProcedureStarted = false;
+        calStep = 0;
+        renderCalPanel();
+      }
+    };
+    updateSuggestedUi();
+    updateCalNextDisabled();
+  }
+
+  function calCurrentStepValueValid() {
+    if (calStep === 0) return isFinite(parseLocaleFloat(calInputs.emptyBeamG));
+    if (calStep === 1) return isFinite(parseLocaleFloat(calInputs.knownWeightG));
+    return isFinite(parseLocaleFloat(calInputs.knownMeasuredG));
+  }
+
+  function updateCalNextDisabled() {
+    var nextBtn = el('calNext');
+    if (!nextBtn) return;
+    readCalInputsFromDom();
+    nextBtn.disabled = !calCurrentStepValueValid();
+  }
+
+  function readCalInputsFromDom() {
+    var a = el('calEmptyBeam');
+    var b = el('calKnownWeight');
+    var c = el('calKnownMeasured');
+    if (a) calInputs.emptyBeamG = a.value;
+    if (b) calInputs.knownWeightG = b.value;
+    if (c) calInputs.knownMeasuredG = c.value;
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function renderAdv() {
+    var root = panels.adv;
+    root.innerHTML =
+      '<div class="cal-section"><h2>Device</h2><dl class="adv-list">' +
+      '<dt>Software version</dt><dd>' + escapeHtml(fmt(state.softwareVersion)) + '</dd>' +
+      '<dt>Commit</dt><dd>' + escapeHtml(fmt(state.commitHash)) + '</dd>' +
+      '<dt>Author</dt><dd>' + escapeHtml(fmt(state.author)) + '</dd>' +
+      '<dt>OTA update</dt><dd><button type="button" class="primary btn-ota" id="btnOtaUpdate">Firmware Update</button></dd>' +
+      '</dl></div>';
+    var ota = el('btnOtaUpdate');
+    if (ota) {
+      ota.addEventListener('click', function () {
+        window.location.href = '/update';
+      });
+    }
+  }
+
+  function updateSuggestedUi() {
+    var sl = el('suggestedLine');
+    var bs = el('btnUseSuggested');
+    if (!sl || !bs) return;
+    var sf = suggestedFactor();
+    sl.textContent = 'Suggested from procedure: ' + (sf != null ? String(sf) : '—');
+    bs.disabled = sf == null;
+  }
+
+  function syncCalibrationFromDevice() {
+    var df = el('devFactorDisp');
+    if (df) df.textContent = state.calibrationFactor != null && isFinite(state.calibrationFactor) ? String(state.calibrationFactor) : '—';
+    var fi = el('factorInput');
+    if (fi && !factorDirty) {
+      fi.value = state.calibrationFactor != null && isFinite(state.calibrationFactor) ? String(state.calibrationFactor) : '';
+      factorDraft = fi.value;
+    }
+    updateSuggestedUi();
+  }
+
+  function refreshFromDevice() {
+    renderStatePill();
+    renderServe();
+    renderAdv();
+    if (activeTab === 'cal') syncCalibrationFromDevice();
+  }
+
+  function setTab(name) {
+    if (name === activeTab) return;
+    if (activeTab === 'cal') readCalInputsFromDom();
+    activeTab = name;
+    var tabs = document.querySelectorAll('.tabbar .tab');
+    var ps = document.querySelectorAll('[data-panel]');
+    for (var i = 0; i < tabs.length; i++) {
+      var on = tabs[i].getAttribute('data-tab') === name;
+      tabs[i].classList.toggle('on', on);
+      tabs[i].setAttribute('aria-selected', on ? 'true' : 'false');
+    }
+    for (var j = 0; j < ps.length; j++) {
+      ps[j].classList.toggle('on', ps[j].getAttribute('data-panel') === name);
+    }
+    if (name === 'cal') renderCalPanel();
+  }
+
+  document.querySelectorAll('.tabbar .tab').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      setTab(btn.getAttribute('data-tab'));
+    });
+  });
+
+  window.addEventListener('message', function (ev) {
+    var d = ev.data;
+    if (d && d.type === 'bart-state') applyIncoming(d.payload);
+  });
+
+  function init() {
+    panels.serve = el('panelServe');
+    panels.cal = el('panelCal');
+    panels.adv = el('panelAdv');
+    document.querySelectorAll('[data-panel]').forEach(function (p) {
+      p.classList.toggle('on', p.getAttribute('data-panel') === 'serve');
+    });
+    renderStatePill();
+    renderServe();
+    renderCalPanel();
+    renderAdv();
+  }
+
+  init();
+
+  if (espBaseUrl) {
+    fetch(espPath('/esp/state'), { cache: 'no-store', mode: 'cors' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('esp');
+        return r.json();
+      })
+      .then(function (j) {
+        applyIncoming(j);
+        var es = new EventSource(espPath('/esp/events'));
+        es.onmessage = function (e) {
+          try { applyIncoming(JSON.parse(e.data)); } catch (x) {}
+        };
+      })
+      .catch(function () {
+        serveBarBound = false;
+        panels.serve.innerHTML =
+          '<p class="empty-hint">Could not reach ESP bridge.</p>' +
+          '<p class="empty-hint esp-link-hint">Expected <code>' + escapeHtml(espBaseUrl) + '</code> — run <code>python esp_sim.py</code> with matching <code>-p</code> port.</p>';
+        renderStatePill();
+      });
+  }
+})();
+  </script>
+</body>
+</html>

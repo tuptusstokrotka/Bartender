@@ -1,20 +1,31 @@
 #!/usr/bin/env python3
 """
-ESP-style data bridge for the Bart UI (separate from the static file server).
+Local Bart host: serves index.html and the same /esp/* API the ESP32 firmware should expose.
 
-  python esp_sim.py -g 6 -f 1.25 --bind 127.0.0.1 -p 9000
+  Set-Location <folder>; python esp_sim.py
 
-Then open the page from your static server with:
-  index.html?esp=http://127.0.0.1:9000
+Then open http://127.0.0.1:9527/ (default port; tries others if busy). The UI uses same-origin
+GET /esp/state and EventSource /esp/events — no cross-origin ?esp= parameter.
 
-HTTP: POST /esp/display-weight (JSON), POST /esp/normal-mode (return device UI to normal; clears liveWeightDisplay in sim),
-  POST /esp/setpoint (JSON {"pourMl": number}) — keeps SSE/state in sync with the UI setpoint.
+On Windows PowerShell 5.x use a semicolon between commands, not &&.
 
-Keys (this terminal, Windows = single key):
-  qwertyuiop  select glass 1..10 (clamped to -g count)
-  a           place glass / cycle tare: empty -> 20 g; then 20 g <-> 0 g
-  s / d       add / subtract net (5 g)
+HTTP (CORS * on API): GET / and /index.html, GET /esp/state, GET /esp/events (SSE),
+  POST /esp/calibration-begin (show live weight on device), POST /esp/idle (return to idle, no body),
+  POST /esp/apply-factor {"factor":n}, POST /esp/pour-ml {"pour_ml":n},
+  POST /esp/serve {"glass":i}, POST /esp/serve-all (no body), POST /esp/config (dev bulk JSON).
+
+Stdin commands (1-based slot index), one per line:
+  help
+  pour <ml>              set pour setpoint (ml)
+  factor <f>             set calibration factor
+  slots <n>              resize number of glass pads (1..64)
+  empty <slot>           clear glass on slot
+  place <slot> <tare_g> [net_g]   glass on pad with tare (g) and optional net liquid (g)
+  net <slot> <g>         set net mass (g); use +5 or -5 to adjust
+  state                  print JSON snapshot to stderr
+  quit
 """
+
 from __future__ import annotations
 
 import argparse
@@ -27,20 +38,20 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib.parse import urlparse
 
-SIM_LOCK = threading.Lock()
-SIM_STATE: dict[str, Any] = {}
-SIM_SELECTED = 0
-SIM_FACTOR = 1.25
-_KEY_ROW = "qwertyuiop"
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_INDEX_PATH = os.path.join(_SCRIPT_DIR, "index.html")
+
+_LOCK = threading.Lock()
+_STATE: dict[str, Any] = {}
 
 
-def _default_state(n: int) -> dict[str, Any]:
+def _default_state(n: int, factor: float, pour_ml: float) -> dict[str, Any]:
     return {
         "glassCount": n,
-        "calibrationFactor": SIM_FACTOR,
-        "pourMl": 150.0,
+        "calibrationFactor": float(factor),
+        "pourMl": float(pour_ml),
         "bartenderState": "idle",
-        "softwareVersion": "esp-sim",
+        "softwareVersion": "bart-bridge",
         "commitHash": "",
         "author": "",
         "liveWeightDisplay": False,
@@ -49,14 +60,14 @@ def _default_state(n: int) -> dict[str, Any]:
 
 
 def _ensure_glasses() -> None:
-    n = int(SIM_STATE.get("glassCount") or 0)
+    n = int(_STATE.get("glassCount") or 0)
     if n < 1:
         n = 1
-    SIM_STATE["glassCount"] = n
-    glasses: list[dict[str, Any]] = list(SIM_STATE.get("glasses") or [])
+    _STATE["glassCount"] = n
+    glasses: list[dict[str, Any]] = list(_STATE.get("glasses") or [])
     while len(glasses) < n:
         glasses.append({"tareG": None, "netG": None})
-    SIM_STATE["glasses"] = glasses[:n]
+    _STATE["glasses"] = glasses[:n]
 
 
 def _as_float(v: Any) -> float | None:
@@ -75,102 +86,157 @@ def _occ(g: dict[str, Any]) -> bool:
 
 
 def _wire_json() -> str:
-    with SIM_LOCK:
-        snap = dict(SIM_STATE)
-        snap["calibrationFactor"] = SIM_FACTOR
-        return json.dumps(snap, separators=(",", ":"))
+    with _LOCK:
+        return json.dumps(dict(_STATE), separators=(",", ":"))
 
 
-def print_keyboard_help() -> None:
-    n = SIM_STATE.get("glassCount", "?")
-    sys.stdout.write(
-        "\n--- esp_sim keys ---\n"
-        f"  {_KEY_ROW}  select glass (1..10, max {n})\n"
-        "  a           place glass or cycle tare 20 g <-> 0 g\n"
-        "  s / d       add / subtract net (5 g)\n"
-        f"  factor fixed at {SIM_FACTOR}  (-f)\n"
-        "  h           help\n\n",
-    )
+def _bridge_log_post(path: str, body: dict[str, Any] | None) -> None:
+    if not body:
+        sys.stdout.write(f"[bridge] POST {path} (empty body)\n")
+    else:
+        sys.stdout.write(f"[bridge] POST {path} {json.dumps(body, separators=(',', ':'))}\n")
     sys.stdout.flush()
 
 
-def handle_key(ch: bytes) -> None:
-    global SIM_SELECTED
-    if not ch:
-        return
-    b0 = ch[0]
-    if b0 in (13, 10, 32):
-        return
-    c = chr(b0) if b0 < 128 else "?"
-    lc = c.lower()
-
-    with SIM_LOCK:
-        _ensure_glasses()
-        n = int(SIM_STATE["glassCount"])
-        SIM_SELECTED = max(0, min(n - 1, SIM_SELECTED))
-        g = SIM_STATE["glasses"][SIM_SELECTED]
-
-        if lc in _KEY_ROW:
-            idx = _KEY_ROW.index(lc)
-            SIM_SELECTED = min(idx, max(0, n - 1))
-        elif lc == "a":
-            if not _occ(g):
-                g["occupied"] = True
-                g["tareG"] = 20.0
-                g["netG"] = 0.0
-            else:
-                t = _as_float(g.get("tareG"))
-                if t is None or abs(t) < 0.01:
-                    g["tareG"] = 20.0
-                elif abs(t - 20.0) < 0.01:
-                    g["tareG"] = 0.0
-                else:
-                    g["tareG"] = 20.0
-        elif lc == "s":
-            if _occ(g):
-                g["netG"] = float(g.get("netG") or 0.0) + 5.0
-        elif lc == "d":
-            if _occ(g):
-                g["netG"] = max(0.0, float(g.get("netG") or 0.0) - 5.0)
-
-        SIM_STATE["calibrationFactor"] = SIM_FACTOR
-
-    if lc in "h?":
-        print_keyboard_help()
+def _print_help() -> None:
+    sys.stderr.write(
+        "\nCommands (slot = 1..N):  pour <ml>  factor <f>  slots <n>  "
+        "empty <slot>  place <slot> <tare_g> [net_g]  net <slot> <g>|+d|-d  state  quit\n\n",
+    )
+    sys.stderr.flush()
 
 
-def _keyboard_win() -> None:
-    import msvcrt
-
-    while True:
-        while msvcrt.kbhit():
-            ch = msvcrt.getch()
-            if ch in (b"\x00", b"\xe0") and msvcrt.kbhit():
-                msvcrt.getch()
-                continue
-            handle_key(ch)
-        time.sleep(0.04)
-
-
-def _keyboard_line() -> None:
-    for line in iter(sys.stdin.readline, ""):
-        for ch in line.strip():
-            handle_key(ch.encode("utf-8", errors="ignore")[:1] or b" ")
-
-
-def keyboard_thread_main() -> None:
-    print_keyboard_help()
+def _parse_slot(tok: str, n: int) -> int | None:
     try:
-        if sys.platform == "win32":
-            _keyboard_win()
-        else:
-            _keyboard_line()
+        s = int(tok, 10)
+    except ValueError:
+        return None
+    if s < 1 or s > n:
+        return None
+    return s - 1
+
+
+def _handle_line(line: str) -> None:
+    parts = line.strip().split()
+    if not parts:
+        return
+    cmd = parts[0].lower()
+    if cmd in ("help", "h", "?"):
+        _print_help()
+        return
+    if cmd in ("quit", "q", "exit"):
+        sys.stderr.write("Stop the bridge with Ctrl+C in this terminal.\n")
+        sys.stderr.flush()
+        return
+    with _LOCK:
+        _ensure_glasses()
+        n = int(_STATE["glassCount"])
+
+    if cmd == "state":
+        sys.stderr.write(_wire_json() + "\n")
+        sys.stderr.flush()
+        return
+
+    if cmd == "pour" and len(parts) >= 2:
+        ml = _as_float(parts[1])
+        if ml is not None and ml > 0:
+            with _LOCK:
+                _ensure_glasses()
+                _STATE["pourMl"] = float(ml)
+        return
+
+    if cmd == "factor" and len(parts) >= 2:
+        f = _as_float(parts[1])
+        if f is not None and f > 0:
+            with _LOCK:
+                _ensure_glasses()
+                _STATE["calibrationFactor"] = float(f)
+        return
+
+    if cmd == "slots" and len(parts) >= 2:
+        try:
+            nn = int(parts[1], 10)
+        except ValueError:
+            return
+        nn = max(1, min(64, nn))
+        with _LOCK:
+            _ensure_glasses()
+            cur = list(_STATE["glasses"])
+            if nn > len(cur):
+                cur.extend({"tareG": None, "netG": None} for _ in range(nn - len(cur)))
+            else:
+                cur = cur[:nn]
+            _STATE["glassCount"] = nn
+            _STATE["glasses"] = cur
+        return
+
+    if cmd == "empty" and len(parts) >= 2:
+        idx = _parse_slot(parts[1], n)
+        if idx is None:
+            return
+        with _LOCK:
+            _ensure_glasses()
+            g = _STATE["glasses"][idx]
+            g["tareG"] = None
+            g["netG"] = None
+            g.pop("occupied", None)
+        return
+
+    if cmd == "place" and len(parts) >= 3:
+        idx = _parse_slot(parts[1], n)
+        if idx is None:
+            return
+        t = _as_float(parts[2])
+        net = _as_float(parts[3]) if len(parts) >= 4 else 0.0
+        if t is None:
+            return
+        with _LOCK:
+            _ensure_glasses()
+            g = _STATE["glasses"][idx]
+            g["tareG"] = float(t)
+            g["netG"] = float(net or 0.0)
+            g["occupied"] = True
+        return
+
+    if cmd == "net" and len(parts) >= 3:
+        idx = _parse_slot(parts[1], n)
+        if idx is None:
+            return
+        raw = parts[2]
+        with _LOCK:
+            _ensure_glasses()
+            g = _STATE["glasses"][idx]
+            if not _occ(g):
+                return
+            cur = float(g.get("netG") or 0.0)
+            if raw.startswith("+") or raw.startswith("-"):
+                delta = _as_float(raw)
+                if delta is None:
+                    return
+                g["netG"] = max(0.0, cur + delta)
+            else:
+                v = _as_float(raw)
+                if v is None:
+                    return
+                g["netG"] = max(0.0, float(v))
+        return
+
+    sys.stderr.write(f"Unknown or incomplete command: {line!r}\n")
+    sys.stderr.flush()
+
+
+def _stdin_loop() -> None:
+    _print_help()
+    try:
+        for line in iter(sys.stdin.readline, ""):
+            _handle_line(line)
     except Exception as e:  # noqa: BLE001
-        sys.stderr.write(f"Keyboard thread: {e}\n")
+        sys.stderr.write(f"stdin loop: {e}\n")
+        sys.stderr.flush()
 
 
 class EspHandler(BaseHTTPRequestHandler):
-    server_version = "esp_sim/1.0"
+    server_version = "bart-bridge/1.0"
 
     def log_message(self, fmt: str, *args: object) -> None:
         if "/esp/events" in str(args):
@@ -189,6 +255,27 @@ class EspHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
+        if path in ("/", "/index.html"):
+            try:
+                with open(_INDEX_PATH, "rb") as f:
+                    data = f.read()
+            except OSError:
+                msg = b"index.html not found next to esp_sim.py"
+                self.send_response(500)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.send_header("Content-Length", str(len(msg)))
+                self._cors()
+                self.end_headers()
+                self.wfile.write(msg)
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(data)))
+            self._cors()
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(data)
+            return
         if path == "/esp/state":
             body = _wire_json()
             data = body.encode("utf-8")
@@ -218,55 +305,127 @@ class EspHandler(BaseHTTPRequestHandler):
         self._cors()
         self.end_headers()
 
+    def _read_json_body(self) -> dict[str, Any]:
+        length = int(self.headers.get("Content-Length", "0") or 0)
+        if length > 65536:
+            length = 65536
+        raw = self.rfile.read(length) if length > 0 else b"{}"
+        try:
+            out = json.loads(raw.decode("utf-8", errors="replace") or "{}")
+        except (json.JSONDecodeError, UnicodeError):
+            return {}
+        return out if isinstance(out, dict) else {}
+
     def do_POST(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
-        if path == "/esp/display-weight":
-            length = int(self.headers.get("Content-Length", "0") or 0)
-            if length > 65536:
-                length = 65536
-            raw = self.rfile.read(length) if length > 0 else b"{}"
-            try:
-                json.loads(raw.decode("utf-8", errors="replace") or "{}")
-            except (json.JSONDecodeError, UnicodeError):
-                pass
-            with SIM_LOCK:
+        if path == "/esp/calibration-begin":
+            body = self._read_json_body()
+            _bridge_log_post(path, body if body else None)
+            with _LOCK:
                 _ensure_glasses()
-                SIM_STATE["liveWeightDisplay"] = True
+                _STATE["liveWeightDisplay"] = True
             self.send_response(204)
             self._cors()
             self.end_headers()
-            sys.stdout.write("[esp_sim] live weight display requested (POST /esp/display-weight)\n")
-            sys.stdout.flush()
             return
-        if path == "/esp/normal-mode":
+        if path == "/esp/idle":
             length = int(self.headers.get("Content-Length", "0") or 0)
-            if length > 65536:
-                length = 65536
-            if length > 0:
-                self.rfile.read(length)
-            with SIM_LOCK:
+            if length > 0 and length <= 65536:
+                raw = self.rfile.read(length)
+                try:
+                    body = json.loads(raw.decode("utf-8", errors="replace") or "{}")
+                except (json.JSONDecodeError, UnicodeError):
+                    body = {}
+                _bridge_log_post(path, body if isinstance(body, dict) and body else None)
+            else:
+                _bridge_log_post(path, None)
+            with _LOCK:
                 _ensure_glasses()
-                SIM_STATE["liveWeightDisplay"] = False
+                _STATE["liveWeightDisplay"] = False
+                _STATE["bartenderState"] = "idle"
             self.send_response(204)
             self._cors()
             self.end_headers()
-            sys.stdout.write("[esp_sim] normal mode (POST /esp/normal-mode)\n")
-            sys.stdout.flush()
             return
-        if path == "/esp/setpoint":
-            length = int(self.headers.get("Content-Length", "0") or 0)
-            if length > 65536:
-                length = 65536
-            raw = self.rfile.read(length) if length > 0 else b"{}"
-            try:
-                body = json.loads(raw.decode("utf-8", errors="replace") or "{}")
-            except (json.JSONDecodeError, UnicodeError):
-                body = {}
-            ml = _as_float(body.get("pourMl"))
-            if ml is not None and ml > 0 and ml <= 9999:
-                with SIM_LOCK:
+        if path == "/esp/pour-ml":
+            body = self._read_json_body()
+            _bridge_log_post(path, body if body else None)
+            ml = _as_float(body.get("pour_ml"))
+            if ml is None:
+                ml = _as_float(body.get("pourMl"))
+            if ml is not None and 0 < ml <= 9999:
+                with _LOCK:
                     _ensure_glasses()
-                    SIM_STATE["pourMl"] = float(ml)
+                    _STATE["pourMl"] = float(ml)
+            self.send_response(204)
+            self._cors()
+            self.end_headers()
+            return
+        if path == "/esp/apply-factor":
+            body = self._read_json_body()
+            f = _as_float(body.get("factor"))
+            if f is None:
+                f = _as_float(body.get("calibrationFactor"))
+            if f is not None and f > 0:
+                f = round(float(f), 6)
+                body_out = {"factor": f}
+                _bridge_log_post(path, body_out)
+                with _LOCK:
+                    _ensure_glasses()
+                    _STATE["calibrationFactor"] = float(f)
+            else:
+                _bridge_log_post(path, body if body else None)
+            self.send_response(204)
+            self._cors()
+            self.end_headers()
+            return
+        if path == "/esp/serve":
+            body = self._read_json_body()
+            _bridge_log_post(path, body if body else None)
+            self.send_response(204)
+            self._cors()
+            self.end_headers()
+            return
+        if path == "/esp/serve-all":
+            length = int(self.headers.get("Content-Length", "0") or 0)
+            if length > 0 and length <= 65536:
+                raw = self.rfile.read(length)
+                try:
+                    body = json.loads(raw.decode("utf-8", errors="replace") or "{}")
+                except (json.JSONDecodeError, UnicodeError):
+                    body = {}
+                _bridge_log_post(path, body if isinstance(body, dict) and body else None)
+            else:
+                _bridge_log_post(path, None)
+            self.send_response(204)
+            self._cors()
+            self.end_headers()
+            return
+        if path == "/esp/config":
+            body = self._read_json_body()
+            _bridge_log_post(path, body if body else None)
+            with _LOCK:
+                if "glassCount" in body and body["glassCount"] is not None:
+                    nn = max(1, min(64, int(body["glassCount"])))
+                    cur = list(_STATE.get("glasses") or [])
+                    if nn > len(cur):
+                        cur.extend({"tareG": None, "netG": None} for _ in range(nn - len(cur)))
+                    else:
+                        cur = cur[:nn]
+                    _STATE["glassCount"] = nn
+                    _STATE["glasses"] = cur
+                _ensure_glasses()
+                if "calibrationFactor" in body:
+                    cf = _as_float(body.get("calibrationFactor"))
+                    if cf is not None and cf > 0:
+                        _STATE["calibrationFactor"] = float(cf)
+                if "pourMl" in body:
+                    pm = _as_float(body.get("pourMl"))
+                    if pm is not None and pm > 0:
+                        _STATE["pourMl"] = float(pm)
+                for key in ("bartenderState", "softwareVersion", "commitHash", "author"):
+                    if key in body:
+                        _STATE[key] = body[key]
             self.send_response(204)
             self._cors()
             self.end_headers()
@@ -284,13 +443,13 @@ def _port_candidates(cli_port: int | None) -> list[int]:
     ports: list[int] = []
     if cli_port is not None:
         ports.append(int(cli_port))
-    raw = os.environ.get("ESP_SIM_PORT")
+    raw = os.environ.get("BART_BRIDGE_PORT")
     if raw:
         try:
             ports.append(int(raw))
         except ValueError:
             pass
-    ports.extend([9000, 9001, 9010, 8765, 8888])
+    ports.extend([9527, 9000, 9001, 9010, 8765, 8888])
     seen: set[int] = set()
     out: list[int] = []
     for p in ports:
@@ -316,27 +475,27 @@ def create_server(host: str, cli_port: int | None) -> tuple[Server, int]:
 
 
 def main() -> None:
-    global SIM_STATE, SIM_FACTOR  # noqa: PLW0603
-    p = argparse.ArgumentParser(description="Bart ESP bridge (SSE + keyboard) for static-served UI")
+    global _STATE  # noqa: PLW0603
+    p = argparse.ArgumentParser(description="Bart device HTTP bridge for index.html (SSE + REST)")
     p.add_argument("-g", "--glasses", type=int, default=4, metavar="N", help="Number of glass slots (default 4)")
-    p.add_argument("-f", "--factor", type=float, default=1.25, help="Calibration factor pushed to UI (default 1.25)")
-    p.add_argument("--bind", default=os.environ.get("ESP_SIM_BIND", "127.0.0.1"))
-    p.add_argument("-p", "--port", type=int, default=None)
+    p.add_argument("-f", "--factor", type=float, default=1.25, help="Calibration factor (default 1.25)")
+    p.add_argument("--pour", type=float, default=150.0, help="Pour setpoint ml (default 150)")
+    p.add_argument("--bind", default=os.environ.get("BART_BRIDGE_BIND", "127.0.0.1"))
+    p.add_argument("-p", "--port", type=int, default=None, help="Listen port (default: first free among 9527, 9000, …)")
     args = p.parse_args()
 
     n = max(1, min(64, args.glasses))
-    SIM_FACTOR = float(args.factor)
-    SIM_STATE = _default_state(n)
+    _STATE = _default_state(n, float(args.factor), float(args.pour))
 
-    t = threading.Thread(target=keyboard_thread_main, name="esp-sim-keys", daemon=True)
+    t = threading.Thread(target=_stdin_loop, name="bart-host-stdin", daemon=True)
     t.start()
 
     httpd, port = create_server(args.bind, args.port)
     with httpd:
-        print(f"esp_sim listening: http://{args.bind}:{port}/")
-        print(f"  State: http://{args.bind}:{port}/esp/state")
-        print(f"  SSE:   http://{args.bind}:{port}/esp/events")
-        print(f"Open static index.html with:  ?esp=http://{args.bind}:{port}")
+        base = f"http://{args.bind}:{port}"
+        print(f"Bart host: UI and API at {base}/")
+        print(f"  Page {base}/   state {base}/esp/state   SSE {base}/esp/events")
+        print("Stdin: place/net/pour commands update data pushed to the browser.")
         print("Ctrl+C to stop.\n")
         try:
             httpd.serve_forever()

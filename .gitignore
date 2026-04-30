@@ -1,3 +1,8 @@
 .pio
 .vscode
 test
+
+# git
+version.h
+# build
+html.h

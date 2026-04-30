@@ -4,7 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Bart</title>
-  <!-- bart-setpoint {pourMl}, bart-display-weight {show}, bart-normal-mode {}, bart-calibrate. Bridge: ?esp= (POST /esp/setpoint) -->
   <style>
     :root {
       --bg: #0a0a0b;
@@ -501,8 +500,37 @@
     }
     .tabbar button.tab:hover { background: rgba(255, 255, 255, 0.04); }
     .dash { color: var(--ink-soft); }
-    .esp-link-hint { margin-top: 0.35rem; font-size: 0.78rem; }
-    .esp-link-hint code { font-size: 0.72rem; background: rgba(255, 255, 255, 0.08); padding: 0.1rem 0.25rem; border-radius: 4px; border: 1px solid var(--rim); }
+    .device-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 2.5rem 1rem;
+      min-height: 38vh;
+    }
+    .device-loading-spinner {
+      box-sizing: border-box;
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.12);
+      border-top-color: var(--accent);
+      border-right-color: rgba(6, 182, 212, 0.35);
+      animation: device-spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes device-spin {
+      to { transform: rotate(360deg); }
+    }
+    .device-loading-text {
+      margin: 0;
+      font-size: 0.875rem;
+      color: var(--ink-soft);
+      text-align: center;
+      max-width: 18rem;
+      line-height: 1.45;
+    }
   </style>
 </head>
 <body>
@@ -551,25 +579,28 @@
   var factorDirty = false;
   var panels = { serve: null, cal: null, adv: null };
   var activeTab = 'serve';
-  var espBaseUrl = (function () {
-    var e = new URLSearchParams(location.search).get('esp');
-    return e ? String(e).replace(/\/$/, '') : '';
-  })();
   var serveBarBound = false;
   var setpointEspTimer = null;
+  var deviceHandshakeDone = false;
+  var liveEventSource = null;
+  var deviceReconnectTimer = null;
+  var deviceConnectLabel = 'Connecting…';
 
-  function espPath(suffix) {
-    return espBaseUrl + suffix;
+  function postJson(path, obj) {
+    fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(obj || {})
+    }).catch(function () {});
   }
 
-  function pushPourMlToEsp(ml) {
-    if (!espBaseUrl || ml == null || !isFinite(ml) || !(ml > 0)) return;
-    fetch(espPath('/esp/setpoint'), {
-      method: 'POST',
-      mode: 'cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pourMl: ml })
-    }).catch(function () {});
+  function postEmpty(path) {
+    fetch(path, { method: 'POST' }).catch(function () {});
+  }
+
+  function pushPourMlToDevice(ml) {
+    if (ml == null || !isFinite(ml) || !(ml > 0)) return;
+    postJson('/esp/pour-ml', { pour_ml: ml });
   }
 
   function el(id) { return document.getElementById(id); }
@@ -580,6 +611,12 @@
     if (s === '') return NaN;
     var v = parseFloat(s);
     return isFinite(v) ? v : NaN;
+  }
+
+  /** Calibration factor sent to ESP: max 6 fractional digits. */
+  function roundFactor6(n) {
+    if (n == null || !isFinite(n)) return n;
+    return Math.round(Number(n) * 1e6) / 1e6;
   }
 
   function fmt(v) {
@@ -607,13 +644,32 @@
     return Math.max(0, Math.min(100, Math.round(p)));
   }
 
+  function machineIdle() {
+    var s = state.bartenderState;
+    if (s == null) return true;
+    if (typeof s === 'number') return s === 0;
+    var u = String(s).toLowerCase();
+    return u.indexOf('idle') >= 0;
+  }
+
   function statePillClass(s) {
-    var u = (s || '').toLowerCase();
+    if (s === 0 || s === '0') return 'state-pill idle';
+    var u = (s != null ? String(s) : '').toLowerCase();
     if (u.indexOf('idle') >= 0) return 'state-pill idle';
     if (u.indexOf('serv') >= 0) return 'state-pill serving';
     if (u.indexOf('calib') >= 0) return 'state-pill calibration';
     if (u.indexOf('err') >= 0 || u.indexOf('fault') >= 0) return 'state-pill error';
     return 'state-pill';
+  }
+
+  function statePillLabel() {
+    var s = state.bartenderState;
+    if (s == null) return '—';
+    if (typeof s === 'number') {
+      if (s === 0) return 'IDLE';
+      return String(s);
+    }
+    return String(s);
   }
 
   function resizeGlasses(n) {
@@ -648,15 +704,27 @@
         state.calibrationFactor = Number(payload.calibrationFactor);
         if (!factorDirty) factorDraft = String(state.calibrationFactor);
       }
+    } else if ('calibration_factor' in payload) {
+      if (payload.calibration_factor == null || payload.calibration_factor === '') {
+        state.calibrationFactor = null;
+        if (!factorDirty) factorDraft = '';
+      } else {
+        state.calibrationFactor = Number(payload.calibration_factor);
+        if (!factorDirty) factorDraft = String(state.calibrationFactor);
+      }
     }
     if ('pourMl' in payload) {
       if (payload.pourMl == null) state.pourMl = null;
       else state.pourMl = Number(payload.pourMl);
     }
-    if ('targetPourMl' in payload && !('pourMl' in payload)) {
+    if ('pour_ml' in payload && !('pourMl' in payload)) {
+      state.pourMl = payload.pour_ml == null ? null : Number(payload.pour_ml);
+    }
+    if ('targetPourMl' in payload && !('pourMl' in payload) && !('pour_ml' in payload)) {
       state.pourMl = payload.targetPourMl == null ? null : Number(payload.targetPourMl);
     }
     if ('bartenderState' in payload) state.bartenderState = payload.bartenderState;
+    else if ('state' in payload) state.bartenderState = payload.state;
     if ('softwareVersion' in payload) state.softwareVersion = payload.softwareVersion;
     if ('commitHash' in payload) state.commitHash = payload.commitHash;
     if ('author' in payload) state.author = payload.author;
@@ -677,14 +745,12 @@
     refreshFromDevice();
   }
 
-  window.BartApplyState = applyIncoming;
-
   function renderStatePill() {
     var pill = el('statePill');
-    var t = state.bartenderState != null ? String(state.bartenderState) : '—';
+    var t = statePillLabel();
     pill.textContent = t;
-    pill.className = statePillClass(t);
-    pill.title = 'Bartender state: ' + t;
+    pill.className = machineIdle() ? 'state-pill idle' : statePillClass(state.bartenderState);
+    pill.title = 'State: ' + t;
   }
 
   function bindServeBarOnce() {
@@ -701,8 +767,7 @@
         setpointEspTimer = null;
       }
       state.pourMl = v;
-      window.dispatchEvent(new CustomEvent('bart-setpoint', { detail: { pourMl: v } }));
-      pushPourMlToEsp(v);
+      pushPourMlToDevice(v);
       renderServeGrid();
     }
     inp.addEventListener('input', function () {
@@ -714,7 +779,7 @@
         setpointEspTimer = setTimeout(function () {
           setpointEspTimer = null;
           var cur = parseLocaleFloat(inp.value);
-          if (isFinite(cur) && cur > 0) pushPourMlToEsp(cur);
+          if (isFinite(cur) && cur > 0) pushPourMlToDevice(cur);
         }, 350);
       }
     });
@@ -849,14 +914,25 @@
     }
   }
 
+  function deviceLoadingHtml() {
+    return (
+      '<div class="device-loading" role="status" aria-live="polite">' +
+      '<div class="device-loading-spinner" aria-hidden="true"></div>' +
+      '<p class="device-loading-text">' + escapeHtml(deviceConnectLabel) + '</p>' +
+      '</div>'
+    );
+  }
+
   function renderServe() {
     var root = panels.serve;
+    if (!deviceHandshakeDone) {
+      serveBarBound = false;
+      root.innerHTML = deviceLoadingHtml();
+      return;
+    }
     if (!state.glassCount || state.glasses.length === 0) {
       serveBarBound = false;
-      var hint = !espBaseUrl
-        ? '<p class="empty-hint esp-link-hint">Add <code>?esp=http://127.0.0.1:9000</code> and run <code>python esp_sim.py -g 4 -f 1.25 -p 9000</code>.</p>'
-        : '';
-      root.innerHTML = '<p class="empty-hint">Waiting for data…</p>' + hint;
+      root.innerHTML = '<p class="empty-hint">No glass slots reported yet.</p>';
       return;
     }
     if (el('serveWrap') && !el('serveWrap').querySelector('.serve-list-wrap')) {
@@ -886,18 +962,17 @@
   }
 
   function serveLocked() {
-    var s = state.bartenderState;
-    if (s == null) return false;
-    return String(s).toLowerCase().indexOf('idle') < 0;
+    return !machineIdle();
   }
 
   function onServeOne(ev) {
     var idx = parseInt(ev.currentTarget.getAttribute('data-idx'), 10);
-    window.dispatchEvent(new CustomEvent('bart-serve', { detail: { glassIndex: idx } }));
+    if (!isFinite(idx) || idx < 0) return;
+    postJson('/esp/serve', { glass: idx });
   }
 
   function onServeAll() {
-    window.dispatchEvent(new CustomEvent('bart-serve-all', { detail: { ServeAll: true } }));
+    postEmpty('/esp/serve-all');
   }
 
   function suggestedFactor() {
@@ -908,7 +983,8 @@
     var den = measured - empty;
     if (den === 0 || !isFinite(den)) return null;
     var f = known / den;
-    return isFinite(f) ? f : null;
+    if (!isFinite(f)) return null;
+    return roundFactor6(f);
   }
 
   function renderCalPanel() {
@@ -967,7 +1043,9 @@
     el('btnApplyFactor').addEventListener('click', function () {
       var v = parseLocaleFloat(fi.value);
       if (!isFinite(v)) return;
-      window.dispatchEvent(new CustomEvent('bart-calibration-factor', { detail: { factor: v } }));
+      v = roundFactor6(v);
+      fi.value = String(v);
+      postJson('/esp/apply-factor', { factor: v });
       factorDirty = false;
       state.calibrationFactor = v;
       factorDraft = String(v);
@@ -975,15 +1053,7 @@
 
     if (!calProcedureStarted) {
       el('btnCalBegin').addEventListener('click', function () {
-        window.dispatchEvent(new CustomEvent('bart-display-weight', { detail: { show: true } }));
-        if (espBaseUrl) {
-          fetch(espPath('/esp/display-weight'), {
-            method: 'POST',
-            mode: 'cors',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ show: true })
-          }).catch(function () {});
-        }
+        postEmpty('/esp/calibration-begin');
         calProcedureStarted = true;
         calStep = 0;
         renderCalPanel();
@@ -1043,23 +1113,7 @@
       if (!calCurrentStepValueValid()) return;
       if (calStep < 2) { calStep++; renderCalPanel(); }
       else {
-        window.dispatchEvent(new CustomEvent('bart-calibrate', {
-          detail: {
-            emptyBeamMeasuredG: calInputs.emptyBeamG,
-            knownWeightG: calInputs.knownWeightG,
-            knownWeightOnBeamMeasuredG: calInputs.knownMeasuredG,
-            suggestedFactor: suggestedFactor()
-          }
-        }));
-        window.dispatchEvent(new CustomEvent('bart-normal-mode', { detail: {} }));
-        if (espBaseUrl) {
-          fetch(espPath('/esp/normal-mode'), {
-            method: 'POST',
-            mode: 'cors',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ normal: true })
-          }).catch(function () {});
-        }
+        postEmpty('/esp/idle');
         calProcedureStarted = false;
         calStep = 0;
         renderCalPanel();
@@ -1166,11 +1220,6 @@
     });
   });
 
-  window.addEventListener('message', function (ev) {
-    var d = ev.data;
-    if (d && d.type === 'bart-state') applyIncoming(d.payload);
-  });
-
   function init() {
     panels.serve = el('panelServe');
     panels.cal = el('panelCal');
@@ -1186,27 +1235,55 @@
 
   init();
 
-  if (espBaseUrl) {
-    fetch(espPath('/esp/state'), { cache: 'no-store', mode: 'cors' })
+  function stopLiveStream() {
+    if (liveEventSource) {
+      try { liveEventSource.close(); } catch (x) {}
+      liveEventSource = null;
+    }
+  }
+
+  function scheduleDeviceReconnect() {
+    if (deviceReconnectTimer) return;
+    deviceReconnectTimer = setTimeout(function () {
+      deviceReconnectTimer = null;
+      deviceConnectLabel = 'Reconnecting…';
+      renderServe();
+      startDeviceStream();
+    }, 2500);
+  }
+
+  function startDeviceStream() {
+    fetch('/esp/state', { cache: 'no-store' })
       .then(function (r) {
-        if (!r.ok) throw new Error('esp');
+        if (!r.ok) throw new Error('state');
         return r.json();
       })
       .then(function (j) {
+        if (deviceReconnectTimer) {
+          clearTimeout(deviceReconnectTimer);
+          deviceReconnectTimer = null;
+        }
+        stopLiveStream();
+        deviceHandshakeDone = true;
+        deviceConnectLabel = 'Connecting…';
         applyIncoming(j);
-        var es = new EventSource(espPath('/esp/events'));
-        es.onmessage = function (e) {
+        liveEventSource = new EventSource('/esp/events');
+        liveEventSource.onmessage = function (e) {
           try { applyIncoming(JSON.parse(e.data)); } catch (x) {}
         };
+        refreshFromDevice();
       })
       .catch(function () {
         serveBarBound = false;
-        panels.serve.innerHTML =
-          '<p class="empty-hint">Could not reach ESP bridge.</p>' +
-          '<p class="empty-hint esp-link-hint">Expected <code>' + escapeHtml(espBaseUrl) + '</code> — run <code>python esp_sim.py</code> with matching <code>-p</code> port.</p>';
+        deviceHandshakeDone = false;
+        deviceConnectLabel = 'Reconnecting…';
+        renderServe();
         renderStatePill();
+        scheduleDeviceReconnect();
       });
   }
+
+  startDeviceStream();
 })();
   </script>
 </body>
